@@ -1,0 +1,43 @@
+# =============================================================================
+# Giga Bot — Rebuild on Deploy Workflow
+# Powered by Gignaati — https://www.gignaati.com
+#
+# Triggered when main branch is updated.
+# Rebuilds and restarts the Giga Bot event handler.
+# =============================================================================
+
+name: Rebuild Giga Bot on Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+
+jobs:
+  rebuild:
+    name: Rebuild Event Handler
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger rebuild on server
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          GH_WEBHOOK_SECRET: ${{ secrets.GH_WEBHOOK_SECRET }}
+          GIGABOT_VERSION: ${{ vars.GIGABOT_VERSION }}
+        run: |
+          echo "🔄 Giga Bot — Triggering rebuild on server..."
+          echo "Version: $GIGABOT_VERSION"
+
+          PAYLOAD="{\"event\":\"rebuild\",\"version\":\"$GIGABOT_VERSION\",\"branch\":\"main\"}"
+          SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$GH_WEBHOOK_SECRET" | awk '{print $2}')
+
+          curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-Gigabot-Signature: sha256=$SIGNATURE" \
+            -d "$PAYLOAD" \
+            "$APP_URL/api/rebuild" || echo "Rebuild webhook failed — server may be starting up"
+
+          echo "✅ Rebuild triggered"

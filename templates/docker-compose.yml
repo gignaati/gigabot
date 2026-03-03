@@ -1,0 +1,72 @@
+# =============================================================================
+# Giga Bot — Docker Compose Configuration
+# Powered by Gignaati — https://www.gignaati.com
+# =============================================================================
+
+version: "3.9"
+
+services:
+  # ── Traefik Reverse Proxy ─────────────────────────────────────────────────
+  traefik:
+    image: traefik:v3.0
+    container_name: gigabot-traefik
+    restart: unless-stopped
+    command:
+      - "--api.insecure=false"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL:-support@gignaati.com}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+    networks:
+      - gigabot-network
+
+  # ── Giga Bot Event Handler ────────────────────────────────────────────────
+  gigabot:
+    image: gignaati/gigabot:${GIGABOT_VERSION:-latest}
+    container_name: gigabot-app
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      - NODE_ENV=production
+      - APP_NAME=Giga Bot
+    volumes:
+      - gigabot-db:/app/data
+      - ./config:/app/config:ro
+    networks:
+      - gigabot-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gigabot.rule=Host(`${APP_DOMAIN:-localhost}`)"
+      - "traefik.http.routers.gigabot.entrypoints=websecure"
+      - "traefik.http.routers.gigabot.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.gigabot-http.rule=Host(`${APP_DOMAIN:-localhost}`)"
+      - "traefik.http.routers.gigabot-http.entrypoints=web"
+      - "traefik.http.routers.gigabot-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.services.gigabot.loadbalancer.server.port=3000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  letsencrypt:
+    name: gigabot-letsencrypt
+  gigabot-db:
+    name: gigabot-db
+
+networks:
+  gigabot-network:
+    name: gigabot-network
+    driver: bridge

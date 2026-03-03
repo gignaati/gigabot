@@ -1,0 +1,71 @@
+# =============================================================================
+# Giga Bot — Run Agent Job Workflow
+# Powered by Gignaati — https://www.gignaati.com
+#
+# Triggered when a job/* branch is pushed.
+# Spins up a Docker container to run the AI agent.
+# =============================================================================
+
+name: Run Giga Bot Job
+
+on:
+  push:
+    branches:
+      - "job/*"
+
+jobs:
+  run-gigabot-job:
+    name: Run Agent Job
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Giga Bot Agent
+        env:
+          # LLM Configuration
+          AGENT_LLM_PROVIDER: ${{ secrets.AGENT_LLM_PROVIDER }}
+          AGENT_LLM_API_KEY: ${{ secrets.AGENT_LLM_API_KEY }}
+          AGENT_LLM_MODEL: ${{ secrets.AGENT_LLM_MODEL }}
+
+          # GitHub Configuration
+          AGENT_GH_TOKEN: ${{ secrets.AGENT_GH_TOKEN }}
+          GH_OWNER: ${{ vars.GH_OWNER }}
+          GH_REPO: ${{ vars.GH_REPO }}
+
+          # App Configuration
+          APP_URL: ${{ vars.APP_URL }}
+          GIGABOT_VERSION: ${{ vars.GIGABOT_VERSION }}
+
+          # Optional: Brave Search
+          AGENT_LLM_BRAVE_API_KEY: ${{ secrets.AGENT_LLM_BRAVE_API_KEY }}
+
+          # Branch info
+          JOB_BRANCH: ${{ github.ref_name }}
+        run: |
+          echo "🤖 Giga Bot — Starting agent job on branch: $JOB_BRANCH"
+          echo "Powered by Gignaati — https://www.gignaati.com"
+          node lib/agent/run.js
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          GH_WEBHOOK_SECRET: ${{ secrets.GH_WEBHOOK_SECRET }}
+          JOB_BRANCH: ${{ github.ref_name }}
+        run: |
+          echo "❌ Giga Bot job failed on branch: $JOB_BRANCH"
+          node lib/agent/notify-failure.js || true

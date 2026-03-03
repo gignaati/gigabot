@@ -1,0 +1,16 @@
+[
+  {
+    "name": "GitHub Push",
+    "description": "Triggered when code is pushed to the main branch",
+    "event": "push",
+    "enabled": false,
+    "prompt": "A new push was made to the main branch. Review the changes and provide a brief summary of what was changed and any potential issues."
+  },
+  {
+    "name": "New Issue",
+    "description": "Triggered when a new GitHub issue is opened",
+    "event": "issues.opened",
+    "enabled": false,
+    "prompt": "A new GitHub issue has been opened. Analyze the issue, categorize it (bug, feature request, question), and draft an initial response acknowledging receipt and providing any immediate guidance."
+  }
+]

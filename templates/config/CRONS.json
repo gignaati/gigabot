@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Daily Digest",
+    "description": "Generate a daily summary of activity and insights",
+    "schedule": "0 8 * * *",
+    "enabled": false,
+    "prompt": "Generate a brief daily digest summarizing any recent activity, open tasks, and key insights. Format it as a clean Markdown report."
+  },
+  {
+    "name": "Weekly Report",
+    "description": "Generate a weekly performance and progress report",
+    "schedule": "0 9 * * 1",
+    "enabled": false,
+    "prompt": "Generate a weekly progress report covering completed tasks, ongoing work, and recommendations for the coming week. Format it as a professional Markdown report aligned with Gignaati's 3E framework."
+  }
+]
