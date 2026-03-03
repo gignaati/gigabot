@@ -79,10 +79,16 @@ const isCodeChat = (chat) => Boolean(chat.codeWorkspaceId && chat.containerName)
 export function SidebarHistory() {
   const [chats, setChats] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState(() => {
-    try { const v = localStorage.getItem('sidebar-chat-filter'); return v === 'chat' || v === 'code' ? v : 'all'; } catch { return 'all'; }
-  });
+  // Always initialise with 'all' so SSR and client render the same HTML (prevents hydration mismatch).
+  // After mount, read the persisted value from localStorage and update state.
+  const [filter, setFilter] = useState('all');
   const updateFilter = (v) => { setFilter(v); try { localStorage.setItem('sidebar-chat-filter', v); } catch {} };
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem('sidebar-chat-filter');
+      if (v === 'chat' || v === 'code') setFilter(v);
+    } catch {}
+  }, []);
   const { activeChatId, navigateToChat } = useChatNav();
 
   const loadChats = async () => {
