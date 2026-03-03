@@ -28,6 +28,11 @@ const MANAGED_PATHS = [
   'docker-compose.yml',
   '.dockerignore',
   'CLAUDE.md',
+  // middleware.js must always be kept in sync with the package template because
+  // Next.js / Turbopack requires the `config` export to be a static literal
+  // object defined directly in this file — it cannot be re-exported from a
+  // module.  Keeping it managed ensures users always get the correct pattern.
+  'middleware.js',
 ];
 
 function isManaged(relPath) {

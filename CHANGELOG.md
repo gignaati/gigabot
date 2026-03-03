@@ -1,5 +1,23 @@
 # Changelog
 
+## 1.1.4
+
+**Released: March 2026**
+
+### Fix: middleware.js now auto-updated on upgrade
+
+The `middleware.js` file has been added to the list of **managed files** that are automatically kept in sync with the package template during `npx gigabot init` and `npx gigabot upgrade`. Previously, users who installed Giga Bot before v1.1.3 would retain an old `middleware.js` that re-exported `config` from `gigabot/middleware`, causing the Next.js / Turbopack build error:
+
+> "The `config` export in Middleware must be a static object literal."
+
+Running `npx gigabot@latest upgrade` (or `npx gigabot init` in an existing project) will now automatically overwrite `middleware.js` with the correct template that defines `config` as a static inline literal.
+
+### Fix: Remove `config` export from `gigabot/middleware`
+
+The `config` export has been removed from `lib/auth/middleware.js` (the module exported as `gigabot/middleware`). This prevents the accidental re-export pattern entirely — even if a user manually writes `export { config } from 'gigabot/middleware'`, there is nothing to re-export, making the failure mode impossible.
+
+---
+
 ## 1.2.57
 
 ### Drizzle Kit migrations
