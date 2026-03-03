@@ -1,341 +1,237 @@
-# Giga Bot — Autonomous AI Agent Platform
+<div align="center">
 
-**Powered by [Gignaati](https://www.gignaati.com) | India-First, Edge-Native AI**
+# Giga Bot
 
-[![npm version](https://img.shields.io/npm/v/gigabot.svg)](https://www.npmjs.com/package/gigabot)
-[![License: MIT](https://img.shields.io/badge/License-MIT-black.svg)](LICENSE)
-[![Node.js](https://img.shields.io/badge/node-%3E%3D18.0.0-black.svg)](https://nodejs.org)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-black.svg)](https://github.com/gignaati/gigabot)
+### Autonomous AI Agent Platform — Powered by Gignaati
 
-> Giga Bot is Gignaati's production-ready autonomous AI agent framework — built for India-first, edge-native AI deployments. It delivers ~80% reduction in AI operating costs with 100% data privacy and zero vendor lock-in.
+[![npm version](https://img.shields.io/npm/v/gigabot?color=000&labelColor=000&logo=npm&label=gigabot)](https://www.npmjs.com/package/gigabot)
+[![License: MIT](https://img.shields.io/badge/License-MIT-000?labelColor=000)](LICENSE)
+[![GitHub Stars](https://img.shields.io/github/stars/gignaati/gigabot?color=000&labelColor=000)](https://github.com/gignaati/gigabot/stargazers)
+[![Made in India](https://img.shields.io/badge/Made%20in-India-FF9933?labelColor=000)](https://www.gignaati.com)
 
-**Quick Install:**
+**Build, deploy, and run autonomous AI agents 24/7.**  
+India-first. Edge-native. Zero vendor lock-in.
+
+[Website](https://www.gignaati.com) · [Documentation](https://github.com/gignaati/gigabot/wiki) · [Issues](https://github.com/gignaati/gigabot/issues) · [Discussions](https://github.com/gignaati/gigabot/discussions)
+
+</div>
+
+---
+
+## What is Giga Bot?
+
+Giga Bot is a self-hosted, autonomous AI agent platform. You deploy it to your own server or VPS, and it runs 24/7 — responding to messages, executing scheduled jobs, handling webhooks, writing code, managing files, and completing complex multi-step tasks.
+
+It is built on a two-layer architecture:
+
+- **Event Handler** — A Next.js server that handles real-time chat (web UI + Telegram), manages your agent's configuration, and creates jobs for the agent to execute.
+- **Agent Engine** — A Docker container that runs your agent jobs using GitHub Actions or a local Docker daemon. The agent can write code, run shell commands, browse the web, and interact with GitHub.
+
+Giga Bot is the only autonomous agent platform with **native PragatiGPT support** — India's indigenous Small Language Model for edge deployment, delivering 100% data privacy and zero foreign cloud dependency.
+
+---
+
+## One-Line Install
+
+### Linux / macOS
 ```bash
-# Linux / macOS
 curl -fsSL https://raw.githubusercontent.com/gignaati/gigabot/main/install.sh | bash
+```
 
-# Windows (PowerShell)
+### Windows (PowerShell)
+```powershell
 irm https://raw.githubusercontent.com/gignaati/gigabot/main/install.ps1 | iex
-
-# All Platforms (npm)
-mkdir my-gigabot && cd my-gigabot && npx gigabot@latest init
 ```
 
-**Legal:** [Privacy Policy](https://www.gignaati.com/privacy-policy) · [Terms of Service](https://www.gignaati.com/terms-and-conditions) · [MIT License](LICENSE) · [Security Policy](SECURITY.md)
-
----
-
-
-**The repository IS the agent** — Every action your agent takes is a git commit. You can see exactly what it did, when, and why. If it screws up, revert it. Want to clone your agent? Fork the repo — code, personality, scheduled jobs, full history, all of it goes with your fork.
-
-**Free compute, built in** — Every GitHub account comes with free cloud computing time. gigabot uses that to run your agent. One task or a hundred in parallel — the compute is already included.
-
-**Self-evolving** — The agent modifies its own code through pull requests. Every change is auditable, every change is reversible. You stay in control.
-
----
-
-## How It Works
-
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                                                                      │
-│  ┌─────────────────┐         ┌─────────────────┐                     │
-│  │  Event Handler  │ ──1──►  │     GitHub      │                     │
-│  │  (creates job)  │         │ (job/* branch)  │                     │
-│  └────────▲────────┘         └────────┬────────┘                     │
-│           │                           │                              │
-│           │                           2 (triggers run-job.yml)       │
-│           │                           │                              │
-│           │                           ▼                              │
-│           │                  ┌─────────────────┐                     │
-│           │                  │  Docker Agent   │                     │
-│           │                  │  (runs Pi, PRs) │                     │
-│           │                  └────────┬────────┘                     │
-│           │                           │                              │
-│           │                           3 (creates PR)                 │
-│           │                           │                              │
-│           │                           ▼                              │
-│           │                  ┌─────────────────┐                     │
-│           │                  │     GitHub      │                     │
-│           │                  │   (PR opened)   │                     │
-│           │                  └────────┬────────┘                     │
-│           │                           │                              │
-│           │                           4a (auto-merge.yml)            │
-│           │                           4b (rebuild-event-handler.yml) │
-│           │                           │                              │
-│           5 (notify-pr-complete.yml / │                              │
-│           │  notify-job-failed.yml)   │                              │
-│           └───────────────────────────┘                              │
-│                                                                      │
-└──────────────────────────────────────────────────────────────────────┘
-```
-
-You interact with your bot via the web chat interface or Telegram (optional). The Event Handler creates a job branch. GitHub Actions spins up a Docker container with the Pi coding agent. The agent does the work, commits the results, and opens a PR. Auto-merge handles the rest. You get a notification when it's done.
-
----
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=gignaati/gigabot&type=date&legend=top-left)](https://www.star-history.com/#gignaati/gigabot&type=date&legend=top-left)
-
----
-
-## Get Started
-
-### Prerequisites
-
-| Requirement | Install |
-|-------------|---------|
-| **Node.js 18+** | [nodejs.org](https://nodejs.org) |
-| **npm** | Included with Node.js |
-| **Git** | [git-scm.com](https://git-scm.com) |
-| **GitHub CLI** | [cli.github.com](https://cli.github.com) |
-| **Docker + Docker Compose** | [docker.com](https://docs.docker.com/get-docker/) (installer requires admin password) |
-| **ngrok*** | [ngrok.com](https://ngrok.com/download) (free account + authtoken required) |
-
-*\*ngrok is only required for local installs without port forwarding. VPS/cloud deployments don't need it. [Sign up](https://dashboard.ngrok.com/signup) for a free ngrok account, then run `ngrok config add-authtoken <YOUR_TOKEN>` before starting setup.*
-
-### Two steps
-
-**Step 1** — Scaffold a new project:
-
+### All Platforms (npm / npx)
 ```bash
-mkdir my-agent && cd my-agent
+# Create a new Giga Bot project
+mkdir my-gigabot && cd my-gigabot
 npx gigabot@latest init
-```
 
-This creates a Next.js project with configuration files, GitHub Actions workflows, and agent templates. You don't need to create a GitHub repo first — the setup wizard handles that.
-
-**Step 2** — Run the setup wizard:
-
-```bash
+# Then run the interactive setup wizard
 npm run setup
 ```
 
-The wizard walks you through everything:
-- Checks prerequisites (Node.js, Git, GitHub CLI)
-- Creates a GitHub repository and pushes your initial commit
-- Creates a GitHub Personal Access Token (scoped to your repo)
-- Collects API keys (Anthropic required; OpenAI, Brave optional)
-- Sets GitHub repository secrets and variables
-- Generates `.env`
-- Builds the project and starts Docker for you
+> **Prerequisites:** [Node.js 18+](https://nodejs.org), [Docker](https://docs.docker.com/get-docker/), [Git](https://git-scm.com)
 
-**That's it.** Visit your APP_URL when the wizard finishes.
+---
 
-- **Web Chat**: Visit your APP_URL to chat with your agent, create jobs, upload files
-- **Telegram** (optional): Run `npm run setup-telegram` to connect a Telegram bot
-- **Webhook**: Send a POST to `/api/create-job` with your API key to create jobs programmatically
-- **Cron**: Edit `config/CRONS.json` to schedule recurring jobs
+## Quick Start (5 Steps)
 
-### Chat vs Agent LLM
+**Step 1 — Create a new GitHub repository** for your agent (e.g., `my-gigabot`).
 
-Your bot has two sides — a **chat** side and an **agent** side.
-
-**Chat** is the conversational part. When you talk to your bot in the web UI or Telegram, it uses the chat LLM. This runs on your server and responds in real time.
-
-**Agent** is the worker. When your bot needs to write code, modify files, or do a bigger task, it spins up a separate job that runs in a Docker container on GitHub. That job uses the agent LLM.
-
-By default, both use the same model. But during setup, you can choose different models for each — for example, a faster model for chat and a more capable one for agent jobs. The wizard asks "Would you like agent jobs to use different LLM settings?" and lets you pick.
-
-### Using a Claude Subscription (OAuth Token)
-
-If you have a Claude Pro ($20/mo) or Max ($100+/mo) subscription, you can use it to power your agent jobs instead of paying per API call. During setup, choose Anthropic as your agent provider and say yes when asked about a subscription.
-
-You'll need to generate a token:
-
+**Step 2 — Install Giga Bot** into a local folder with the same name:
 ```bash
-# Install Claude Code CLI (if you don't have it)
-npm install -g @anthropic-ai/claude-code
-
-# Generate your token (opens browser to log in)
-claude setup-token
+mkdir my-gigabot && cd my-gigabot
+npx gigabot@latest init
+npm install
 ```
 
-Paste the token (starts with `sk-ant-oat01-`) into the setup wizard. Your agent jobs will now run through your subscription. Note that usage counts toward your Claude.ai limits, and you still need an API key for the chat side.
+**Step 3 — Run the setup wizard:**
+```bash
+npm run setup
+```
+The wizard will ask for:
+- Your GitHub Personal Access Token
+- Your public URL (domain or ngrok URL)
+- Your LLM provider and API key (Claude, GPT, Gemini, PragatiGPT, or Ollama)
 
-See [Claude Code vs Pi](docs/CLAUDE_CODE_VS_PI.md) for more details on the two agent backends.
+**Step 4 — Start your agent:**
+```bash
+docker compose up -d
+```
 
-> **Local installs**: Your server needs to be reachable from the internet for GitHub webhooks and Telegram. On a VPS/cloud server, your APP_URL is just your domain. For local development, use [ngrok](https://ngrok.com) (`ngrok http 80`) or port forwarding to expose your machine.
->
-> **If your ngrok URL changes** (it changes every time you restart ngrok on the free plan), you must update APP_URL everywhere:
->
-> ```bash
-> # Update .env and GitHub variable in one command:
-> npx gigabot set-var APP_URL https://your-new-url.ngrok.io
-> # If Telegram is configured, re-register the webhook:
-> npm run setup-telegram
-> ```
+**Step 5 — Chat with your agent** at your APP_URL.
+
+---
+
+## Supported LLM Providers
+
+Giga Bot supports **6 LLM providers** — more than any other self-hosted agent platform:
+
+| Provider | Description | Data Privacy |
+|---|---|---|
+| **PragatiGPT** | Gignaati's India-first SLM — edge-native, on-premise | 100% — no foreign cloud |
+| **Ollama** | Run any open-source model locally (Llama, Mistral, Qwen, Phi) | 100% — fully local |
+| **Claude (Anthropic)** | claude-opus-4, claude-sonnet-4, claude-haiku-4 | Anthropic's servers |
+| **GPT (OpenAI)** | gpt-5.2, gpt-4o, o4-mini | OpenAI's servers |
+| **Gemini (Google)** | gemini-3.1-pro, gemini-2.5-flash | Google's servers |
+| **Custom API** | Any OpenAI-compatible endpoint (vLLM, LM Studio, Together AI) | Depends on endpoint |
+
+Set your provider in `.env`:
+```bash
+LLM_PROVIDER=pragatigpt   # India-first, edge-native
+LLM_PROVIDER=ollama       # Fully local, zero cloud
+LLM_PROVIDER=anthropic    # Claude (default)
+LLM_PROVIDER=openai       # GPT
+LLM_PROVIDER=google       # Gemini
+LLM_PROVIDER=custom       # Any OpenAI-compatible API
+```
+
+---
+
+## Features
+
+### Agent Capabilities
+- **Web Chat** — Chat with your agent at your APP_URL
+- **Telegram** — Connect a Telegram bot with `npm run setup-telegram`
+- **Scheduled Jobs** — Cron-based recurring tasks via `config/CRONS.json`
+- **Webhook Triggers** — POST to `/api/create-job` to trigger jobs programmatically
+- **Code Workspace** — Full terminal and code editor in the browser
+- **File Uploads** — Upload images, PDFs, and text files to the chat
+
+### Agent Tools
+- **Code execution** — Write and run code in any language
+- **Shell commands** — Execute terminal commands
+- **Web search** — Search the internet for up-to-date information
+- **GitHub integration** — Create PRs, manage issues, push commits
+- **File system** — Read, write, and manage files in the repository
+
+### Infrastructure
+- **Docker Compose** — One-command deployment with Traefik reverse proxy
+- **Auto SSL** — Let's Encrypt certificates via Traefik
+- **GitHub Actions** — Agent jobs run in isolated Docker containers
+- **Auto-merge** — Agent can merge its own PRs after review
+- **Hot reload** — Push to `main` triggers automatic rebuild and restart
+
+### Giga Bot Exclusive Features
+- **PragatiGPT** — India's indigenous SLM for edge deployment
+- **Ollama** — Run any open-source model with zero cloud dependency
+- **Multi-LLM routing** — Different LLMs for chat vs. agent jobs
+- **Per-job LLM override** — Specify `llm_provider` and `llm_model` per cron job
+
+---
+
+## CLI Commands
+
+```bash
+npx gigabot init                              # Scaffold or update project files
+npx gigabot setup                            # Run interactive setup wizard
+npx gigabot setup-telegram                   # Configure Telegram bot
+npx gigabot upgrade [@beta|version]          # Upgrade to latest version
+npx gigabot reset-auth                       # Regenerate AUTH_SECRET
+npx gigabot reset [file]                     # Restore a template file
+npx gigabot diff [file]                      # Show differences vs. templates
+npx gigabot set-agent-secret <KEY> [VALUE]   # Set GitHub secret (AGENT_ prefix)
+npx gigabot set-agent-llm-secret <KEY> [VALUE] # Set LLM secret (AGENT_LLM_ prefix)
+npx gigabot set-var <KEY> [VALUE]            # Set GitHub repository variable
+```
+
+---
+
+## Configuration Files
+
+These files in `config/` define your agent's personality and behavior. They are **yours to customize** — Giga Bot will never overwrite them:
+
+| File | Purpose |
+|---|---|
+| `SOUL.md` | Your agent's identity, personality, and values |
+| `JOB_PLANNING.md` | How your agent plans and breaks down jobs |
+| `JOB_AGENT.md` | Instructions for executing jobs |
+| `CRONS.json` | Scheduled recurring jobs |
+| `TRIGGERS.json` | Webhook trigger definitions |
+| `HEARTBEAT.md` | Tasks for the periodic heartbeat cron |
 
 ---
 
 ## Updating
 
 ```bash
-npx gigabot upgrade          # latest stable
-npx gigabot upgrade @beta    # latest beta
-npx gigabot upgrade 1.2.72   # specific version
+npx gigabot upgrade          # Latest stable
+npx gigabot upgrade @beta    # Latest beta
+npx gigabot upgrade 1.2.72   # Specific version
 ```
 
-Saves your local changes, syncs with GitHub, installs the new version, rebuilds, pushes, and restarts Docker.
+---
 
-**What it does:**
+## Deployment
 
-1. Saves any local changes you've made
-2. Pulls the latest from GitHub (stops if there are conflicts)
-3. Installs the new version and updates project files
-4. Rebuilds your project
-5. Pushes everything to GitHub
-6. Restarts Docker containers (if running)
+Giga Bot runs on any Linux server with Docker. Recommended:
 
-Pushing to `main` triggers the `rebuild-event-handler.yml` workflow on your server. It detects the version change, runs `gigabot init`, updates `GIGABOT_VERSION` in the server's `.env`, pulls the new Docker image, restarts the container, rebuilds `.next`, and reloads PM2 — no manual `docker compose` needed.
+| Provider | Spec | Monthly Cost |
+|---|---|---|
+| Hetzner CX22 | 2 vCPU, 4 GB RAM | ~€4 |
+| DigitalOcean Droplet | 2 vCPU, 4 GB RAM | ~$24 |
+| AWS EC2 t3.small | 2 vCPU, 2 GB RAM | ~$15 |
+| Your own hardware | Any Linux machine | ₹0 |
 
-> **Upgrade failed?** See [Recovering from a Failed Upgrade](docs/UPGRADE.md#recovering-from-a-failed-upgrade).
-
-### Understanding `init`
-
-#### How your project is structured
-
-When you ran `gigabot init` the first time, it scaffolded a project folder with two kinds of files:
-
-**Your files** — These are yours to customize. `init` will never overwrite them:
-
-| Files | What they do |
-|-------|-------------|
-| `config/SOUL.md`, `JOB_PLANNING.md`, `JOB_AGENT.md`, etc. | Your agent's personality, behavior, and prompts |
-| `config/CRONS.json`, `TRIGGERS.json` | Your scheduled jobs and webhook triggers |
-| `app/` | Next.js pages and UI components |
-| `docker/pi-coding-agent-job/` | The Dockerfile for the Pi coding agent job container |
-
-**Managed files** — These are infrastructure files that need to stay in sync with the package version. `init` auto-updates them for you:
-
-| Files | What they do |
-|-------|-------------|
-| `.github/workflows/` | GitHub Actions that run jobs, auto-merge PRs, rebuild on deploy |
-| `docker-compose.yml` | Defines how your containers run together (Traefik, event handler, runner) |
-| `docker/event-handler/` | The Dockerfile for the event handler container |
-| `.dockerignore` | Keeps unnecessary files out of Docker builds |
-| `CLAUDE.md` | AI assistant context for your project |
-
-#### What happens when you run `init`
-
-1. **Managed files** are updated automatically to match the new package version
-2. **Your files** are left alone — but if the package ships new defaults (e.g., a new field in `CRONS.json`), `init` lets you know:
-
-```
-Updated templates available:
-These files differ from the current package templates.
-
-  config/CRONS.json
-
-To view differences:  npx gigabot diff <file>
-To reset to default:  npx gigabot reset <file>
-```
-
-You can review at your own pace:
-
+For local development, use [ngrok](https://ngrok.com) to expose your machine:
 ```bash
-npx gigabot diff config/CRONS.json    # see what changed
-npx gigabot reset config/CRONS.json   # accept the new template
+ngrok http 80
+# Then update APP_URL: npx gigabot set-var APP_URL https://your-url.ngrok.io
 ```
 
-#### If you've modified managed files
+---
 
-If you've made custom changes to managed files (e.g., added extra steps to a GitHub Actions workflow), use `--no-managed` so `init` doesn't overwrite your changes:
+## Privacy & Legal
 
-```bash
-npx gigabot init --no-managed
-```
-
-#### Template file conventions
-
-The `templates/` directory contains files scaffolded into user projects by `gigabot init`. Two naming conventions handle files that npm or AI tools would otherwise misinterpret:
-
-**`.template` suffix** — Files ending in `.template` are scaffolded with the suffix stripped. This is used for files that npm mangles (`.gitignore`) or that AI tools would pick up as real project docs (`CLAUDE.md`).
-
-| In `templates/` | Scaffolded as |
-|-----------------|---------------|
-| `.gitignore.template` | `.gitignore` |
-| `CLAUDE.md.template` | `CLAUDE.md` |
-| `api/CLAUDE.md.template` | `api/CLAUDE.md` |
-
-**`CLAUDE.md` exclusion** — The scaffolding walker skips any file named `CLAUDE.md` (without the `.template` suffix). This is a safety net so a bare `CLAUDE.md` accidentally added to `templates/` never gets copied into user projects where AI tools would confuse it with real project instructions.
+- [Privacy Policy](https://www.gignaati.com/privacy-policy)
+- [Terms of Service](https://www.gignaati.com/terms-of-service)
+- [Security Policy](SECURITY.md)
+- [License](LICENSE) — MIT
 
 ---
 
-## CLI Commands
+## Contributing
 
-All commands are run via `npx gigabot <command>` (or the `npm run` shortcuts where noted).
-
-**Project setup:**
-
-| Command | Description |
-|---------|-------------|
-| `init` | Scaffold a new project, or update templates in an existing one |
-| `setup` | Run the full interactive setup wizard (`npm run setup`) |
-| `setup-telegram` | Reconfigure the Telegram webhook (`npm run setup-telegram`) |
-| `reset-auth` | Regenerate AUTH_SECRET, invalidating all sessions |
-
-**Templates:**
-
-| Command | Description |
-|---------|-------------|
-| `diff [file]` | List files that differ from package templates, or diff a specific file |
-| `reset [file]` | List all template files, or restore a specific one to package default |
-
-**Secrets & variables:**
-
-These commands set individual GitHub repository secrets/variables using the `gh` CLI. They read `GH_OWNER` and `GH_REPO` from your `.env`. If VALUE is omitted, you'll be prompted with masked input (keeps secrets out of shell history).
-
-| Command | Description |
-|---------|-------------|
-| `set-agent-secret KEY [VALUE]` | Set `AGENT_<KEY>` GitHub secret and update `.env` |
-| `set-agent-llm-secret KEY [VALUE]` | Set `AGENT_LLM_<KEY>` GitHub secret |
-| `set-var KEY [VALUE]` | Set a GitHub repository variable |
-
-GitHub secrets use a prefix convention so the workflow can route them correctly:
-
-- **`AGENT_`** — Protected secrets passed to the Docker container (filtered from LLM). Example: `AGENT_GH_TOKEN`, `AGENT_ANTHROPIC_API_KEY`
-- **`AGENT_LLM_`** — LLM-accessible secrets (not filtered). Example: `AGENT_LLM_BRAVE_API_KEY`
-- **No prefix** — Workflow-only secrets, never passed to container. Example: `GH_WEBHOOK_SECRET`
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a pull request.
 
 ---
 
-## Security
+## Support
 
-gigabot includes API key authentication, webhook secret validation (fail-closed), session encryption, secret filtering in the Docker agent, and auto-merge path restrictions. However, all software carries risk — gigabot is provided as-is, and you are responsible for securing your own infrastructure. If you're running locally with a tunnel (ngrok, Cloudflare Tunnel, port forwarding), be aware that your dev server endpoints are publicly accessible with no rate limiting and no TLS on the local hop.
-
-See [Security](docs/SECURITY.md) for full details on what's exposed, the risks, and recommendations.
-
----
-
-## Running Different Models
-
-The Event Handler (chat, Telegram, webhooks) and Jobs (Docker agent) are two independent layers — each can run a different LLM. Use Claude for interactive chat and a cheaper or local model for long-running jobs, mix providers per cron entry, or run everything on a single model.
-
-See [Running Different Models](docs/RUNNING_DIFFERENT_MODELS.md) for the full guide: Event Handler config, job defaults, per-job overrides, provider table, and custom provider setup.
+- **GitHub Issues:** [github.com/gignaati/gigabot/issues](https://github.com/gignaati/gigabot/issues)
+- **Discussions:** [github.com/gignaati/gigabot/discussions](https://github.com/gignaati/gigabot/discussions)
+- **Email:** support@gignaati.com
+- **Website:** [www.gignaati.com](https://www.gignaati.com)
 
 ---
 
-## Docs
+<div align="center">
 
-| Document | Description |
-|----------|-------------|
-| [Architecture](docs/ARCHITECTURE.md) | Two-layer design, file structure, API endpoints, GitHub Actions, Docker agent |
-| [Configuration](docs/CONFIGURATION.md) | Environment variables, GitHub secrets, repo variables, ngrok, Telegram setup |
-| [Customization](docs/CUSTOMIZATION.md) | Personality, skills, operating system files, using your bot, security details |
-| [Chat Integrations](docs/CHAT_INTEGRATIONS.md) | Web chat, Telegram, adding new channels |
-| [Running Different Models](docs/RUNNING_DIFFERENT_MODELS.md) | Event Handler vs job model config, per-job overrides, providers, custom provider |
-| [Auto-Merge](docs/AUTO_MERGE.md) | Auto-merge controls, ALLOWED_PATHS configuration |
-| [Deployment](docs/DEPLOYMENT.md) | VPS setup, Docker Compose, HTTPS with Let's Encrypt |
-| [Claude Code vs Pi](docs/CLAUDE_CODE_VS_PI.md) | Comparing the two agent backends (subscription vs API credits) |
-| [How to Build Skills](docs/HOW_TO_BUILD_SKILLS.md) | Guide to building and activating agent skills |
-| [Pre-Release](docs/PRE_RELEASE.md) | Installing beta/alpha builds |
-| [Security](docs/SECURITY.md) | Security disclaimer, local development risks |
-| [Upgrading](docs/UPGRADE.md) | Automated upgrades, recovering from failed upgrades |
+**Built with care by [Gignaati](https://www.gignaati.com) — India's Edge AI Ecosystem**
 
-### Maintainer
+[Privacy Policy](https://www.gignaati.com/privacy-policy) · [Terms of Service](https://www.gignaati.com/terms-of-service) · [Security](SECURITY.md)
 
-| Document | Description |
-|----------|-------------|
-| [NPM](docs/NPM.md) | Updating skills, versioning, and publishing releases |
+</div>
