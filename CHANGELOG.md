@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.1.5
+
+**Released: March 2026**
+
+### Fix: Replace ThePopeBot ASCII banner with GigaBot branding
+
+The `npm run setup` and `npm run setup:telegram` commands previously displayed a `ThePopeBot` ASCII art banner — a leftover from the pre-Gignaati era. Both setup wizards now open with a clean **GigaBot** slant-font banner and the tagline `India's Autonomous AI Agent · Powered by Gignaati`.
+
+This change affects `setup/setup.mjs` and `setup/setup-telegram.mjs`. No functional behaviour is changed — only the visual header shown at wizard startup.
+
+---
+
 ## 1.1.4
 
 **Released: March 2026**
