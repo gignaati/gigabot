@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.2.1 — 2026-03-04
+
+### Fixed — Onboarding friction (3 bugs from user report)
+
+- **install.sh: auto-cd and auto-launch setup** — the one-command installer now automatically `cd`s into the project directory and launches `npm run setup` immediately. Previously, users who ran `npm run setup` from the parent directory got `npm error Missing script: "setup"` because they were in the wrong directory. The installer now handles this transparently with no manual steps required.
+- **docker-compose.local.yml: removed private Docker image reference** — the compose file previously referenced `gignaati/gigabot:event-handler-*` which is a private image that requires `docker login` and does not exist publicly. It now uses `dockerfile_inline` to build GigaBot directly from local source using the official `node:20-alpine` image. No registry login required. First build: ~2–3 minutes; subsequent starts: instant.
+- **setup-local.mjs Step 5: replaced blind Docker launch with interactive start selector** — the wizard previously attempted `docker compose up -d` unconditionally, which failed with a pull error if Docker was not logged in or the image did not exist. Step 5 now:
+  - Checks if Docker is available before offering it as an option
+  - Offers three choices: `npm run dev` (recommended, no Docker), `docker compose` (only if Docker is detected), or `Start later`
+  - Uses `--build` flag so Docker always builds from local source instead of pulling
+  - Falls back gracefully with clear instructions if Docker fails
+
+### Changed
+
+- `install.sh` now also checks for Docker availability and shows an informational warning (not an error) if Docker is not installed, since Docker is optional for Local Mode
+- Summary panel in Local Mode wizard now shows both start options side-by-side for clarity
+
+---
+
 ## 1.2.0
 
 **Released: March 2026**

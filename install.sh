@@ -39,35 +39,51 @@ if ! command -v npm &>/dev/null; then
 fi
 echo -e "${GREEN}✓ npm $(npm --version)${RESET}"
 
-# Check Git
+# Check Git (optional — only needed for Cloud Mode)
 if ! command -v git &>/dev/null; then
-  echo -e "${YELLOW}⚠ Git is not installed. Install from https://git-scm.com${RESET}"
+  echo -e "${YELLOW}⚠ Git is not installed (optional — only needed for Cloud Mode).${RESET}"
 fi
 
-# Check GitHub CLI
-if ! command -v gh &>/dev/null; then
-  echo -e "${YELLOW}⚠ GitHub CLI (gh) is not installed. Install from https://cli.github.com${RESET}"
+# Check Docker (optional — only needed for running via docker-compose)
+if ! command -v docker &>/dev/null; then
+  echo -e "${YELLOW}⚠ Docker is not installed (optional — needed to run via docker-compose).${RESET}"
+  echo -e "  Install from https://docs.docker.com/get-docker/"
 fi
 
 # Determine project directory
 PROJECT_DIR="${1:-my-gigabot}"
+
+# Resolve the absolute path so we can cd back to it after subshells
+ABS_PROJECT_DIR="$(pwd)/${PROJECT_DIR}"
+
 echo ""
 echo -e "${BOLD}Creating project in: ${PROJECT_DIR}/${RESET}"
 mkdir -p "$PROJECT_DIR"
-cd "$PROJECT_DIR"
 
-# Scaffold the project
+# Scaffold the project inside the directory
 echo ""
 echo -e "${BOLD}Scaffolding Giga Bot project...${RESET}"
-npx gigabot@latest init
+(cd "$PROJECT_DIR" && npx gigabot@latest init)
 
 echo ""
 echo -e "${GREEN}${BOLD}✅ Giga Bot scaffolded successfully!${RESET}"
 echo ""
-echo -e "${BOLD}NEXT STEPS:${RESET}"
-echo -e "  1. ${CYAN}cd ${PROJECT_DIR}${RESET}"
-echo -e "  2. ${CYAN}npm run setup${RESET}  — run the interactive setup wizard"
-echo -e "  3. ${CYAN}npm run dev${RESET}    — start the development server"
+
+# ─── Auto-launch setup wizard ─────────────────────────────────────────────────
+# Change into the project directory and run setup immediately so the user
+# does not have to manually cd and run a second command.
+echo -e "${BOLD}Launching setup wizard...${RESET}"
+echo ""
+cd "$ABS_PROJECT_DIR"
+npm run setup
+
+# ─── Post-setup instructions ──────────────────────────────────────────────────
+echo ""
+echo -e "${BOLD}${GREEN}✅ Setup complete!${RESET}"
+echo ""
+echo -e "${BOLD}To start GigaBot:${RESET}"
+echo -e "  ${CYAN}npm run dev${RESET}   — Next.js dev server (recommended for development)"
+echo -e "  ${CYAN}docker compose -f docker-compose.local.yml up -d${RESET}   — Docker (Local Mode)"
 echo ""
 echo -e "${BOLD}Docs:${RESET}    https://github.com/gignaati/gigabot"
 echo -e "${BOLD}Support:${RESET} support@gignaati.com"

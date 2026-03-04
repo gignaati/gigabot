@@ -267,39 +267,82 @@ export async function run() {
   clack.log.success('.env written with local configuration');
 
   // ─── Step 5: Start server ─────────────────────────────────────────────────
-  clack.log.step(`[${++currentStep}/${TOTAL_STEPS}] Starting GigaBot`);
+  clack.log.step(`[${++currentStep}/${TOTAL_STEPS}] How to start GigaBot`);
 
   const composeFile = fs.existsSync(path.join(process.cwd(), 'docker-compose.local.yml'))
     ? 'docker-compose.local.yml'
     : 'docker-compose.yml';
 
+  // Check if the server is already running
   let serverRunning = false;
   try {
-    await fetch('http://localhost:3000/api/ping', {
-      signal: AbortSignal.timeout(2000),
-    });
+    await fetch('http://localhost:3000/api/ping', { signal: AbortSignal.timeout(2000) });
     serverRunning = true;
   } catch { /* not running */ }
 
   if (serverRunning) {
-    const restart = await clack.confirm({ message: 'GigaBot is already running. Restart?' });
-    if (!clack.isCancel(restart) && restart) {
-      try {
-        execSync(`docker compose -f ${composeFile} down && docker compose -f ${composeFile} up -d`, { stdio: 'inherit' });
-        clack.log.success('Server restarted');
-      } catch {
-        clack.log.warn(`Restart failed. Run manually:\n  docker compose -f ${composeFile} down && docker compose -f ${composeFile} up -d`);
-      }
-    }
+    clack.log.success('GigaBot is already running at http://localhost:3000');
   } else {
+    // Check if Docker is available
+    let dockerAvailable = false;
     try {
-      execSync(`docker compose -f ${composeFile} up -d`, { stdio: 'inherit' });
-      clack.log.success('GigaBot started');
-    } catch {
-      clack.log.warn(
-        `Could not start automatically. Run manually:\n\n` +
-        `  docker compose -f ${composeFile} up -d\n`
-      );
+      execSync('docker info', { stdio: 'pipe' });
+      dockerAvailable = true;
+    } catch { /* Docker not running or not installed */ }
+
+    // Ask user how they want to start
+    const startMethod = await clack.select({
+      message: 'How would you like to start GigaBot?',
+      options: [
+        {
+          value: 'dev',
+          label: 'npm run dev  (recommended — Next.js dev server, no Docker needed)',
+          hint: 'fastest to start, hot-reload enabled',
+        },
+        {
+          value: 'docker',
+          label: `docker compose  (${dockerAvailable ? 'Docker detected ✓' : 'Docker not detected ✗ — install Docker first'})`,
+          hint: dockerAvailable ? 'builds from local source, no registry login needed' : 'https://docs.docker.com/get-docker/',
+        },
+        {
+          value: 'later',
+          label: 'Start later — just show me the commands',
+        },
+      ],
+    });
+
+    if (clack.isCancel(startMethod) || startMethod === 'later') {
+      clack.log.info('No problem — start GigaBot when you are ready.');
+    } else if (startMethod === 'dev') {
+      clack.log.info('Starting GigaBot with npm run dev...');
+      clack.log.info('(Press Ctrl+C to stop the server)');
+      clack.outro('Chat with your agent at http://localhost:3000');
+      // exec npm run dev in the foreground so the user sees the output
+      try {
+        execSync('npm run dev', { stdio: 'inherit', cwd: process.cwd() });
+      } catch {
+        // User pressed Ctrl+C — normal exit, not an error
+      }
+      return;
+    } else if (startMethod === 'docker') {
+      if (!dockerAvailable) {
+        clack.log.warn(
+          'Docker is not running or not installed.\n' +
+          '  Install Docker: https://docs.docker.com/get-docker/\n' +
+          '  Then run: docker compose -f ' + composeFile + ' up -d'
+        );
+      } else {
+        clack.log.info(`Building and starting GigaBot with Docker...\n  (First build takes ~2-3 minutes — subsequent starts are instant)`);
+        try {
+          execSync(`docker compose -f ${composeFile} up -d --build`, { stdio: 'inherit' });
+          clack.log.success('GigaBot started via Docker');
+        } catch {
+          clack.log.warn(
+            'Docker start failed. Try the dev server instead:\n\n' +
+            '  npm run dev\n'
+          );
+        }
+      }
     }
   }
 
@@ -312,11 +355,12 @@ export async function run() {
       `App URL:    http://localhost:3000`,
       `Database:   SQLite (local)`,
       '',
-      'To pull the recommended model:',
-      `  ollama pull ${selectedModel}`,
+      'Start options:',
+      '  npm run dev                                    — Next.js dev server (recommended)',
+      `  docker compose -f ${composeFile} up -d --build  — Docker (builds from source)`,
       '',
-      'To start manually:',
-      `  docker compose -f ${composeFile} up -d`,
+      'To pull the selected model:',
+      `  ollama pull ${selectedModel}`,
     ].join('\n'),
     'Local Mode Configuration'
   );
