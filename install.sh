@@ -17,6 +17,23 @@ if [ ! -t 0 ] && [ -e /dev/tty ]; then
   exec < /dev/tty
 fi
 
+# ─── PATH augmentation for macOS / nvm / asdf ────────────────────────────────
+# When running via `curl | bash`, the shell is non-interactive and non-login,
+# so ~/.bashrc, ~/.zshrc, and /etc/profile are NOT sourced. This means:
+#   - Homebrew node (/opt/homebrew/bin on Apple Silicon, /usr/local/bin on Intel)
+#   - nvm-managed node (~/.nvm/versions/node/.../bin)
+#   - asdf-managed node (~/.asdf/shims)
+# may all be missing from PATH. We add them explicitly here.
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+if [ -s "$HOME/.nvm/nvm.sh" ]; then
+  # shellcheck disable=SC1091
+  . "$HOME/.nvm/nvm.sh"
+fi
+if [ -s "$HOME/.asdf/asdf.sh" ]; then
+  # shellcheck disable=SC1091
+  . "$HOME/.asdf/asdf.sh"
+fi
+
 BOLD="\033[1m"
 GREEN="\033[0;32m"
 CYAN="\033[0;36m"
@@ -34,12 +51,20 @@ echo ""
 # Check Node.js
 if ! command -v node &>/dev/null; then
   echo -e "${RED}✗ Node.js is not installed.${RESET}"
+  echo ""
   echo "  Install it from https://nodejs.org (version 18 or higher required)"
+  echo ""
+  echo "  Quick install options:"
+  echo "    macOS (Homebrew):  brew install node"
+  echo "    Linux (nvm):       curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash"
+  echo "    Windows:           https://nodejs.org/en/download"
   exit 1
 fi
 NODE_VERSION=$(node -e "process.stdout.write(process.versions.node.split('.')[0])")
 if [ "$NODE_VERSION" -lt 18 ]; then
   echo -e "${RED}✗ Node.js version $NODE_VERSION is too old. Version 18+ is required.${RESET}"
+  echo "  Current: $(node --version)"
+  echo "  Please upgrade: https://nodejs.org"
   exit 1
 fi
 echo -e "${GREEN}✓ Node.js $(node --version)${RESET}"
@@ -47,6 +72,7 @@ echo -e "${GREEN}✓ Node.js $(node --version)${RESET}"
 # Check npm
 if ! command -v npm &>/dev/null; then
   echo -e "${RED}✗ npm is not installed.${RESET}"
+  echo "  npm comes bundled with Node.js. Please reinstall from https://nodejs.org"
   exit 1
 fi
 echo -e "${GREEN}✓ npm $(npm --version)${RESET}"

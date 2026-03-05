@@ -1,5 +1,43 @@
 # Changelog
 
+## 1.2.4 — 2026-03-05
+
+### Cross-Platform QA Release — Mac/Linux install + Windows login fixes
+
+#### Bug 1 — Mac/Linux install failure: Node.js not found via `curl | bash`
+
+**Root cause:** When bash runs via a pipe (`curl | bash`), it is non-interactive and non-login, so shell init files (`~/.bashrc`, `~/.zshrc`, `/etc/profile`) are never sourced. Node.js installed via Homebrew (`/opt/homebrew/bin`), nvm (`~/.nvm`), or asdf (`~/.asdf`) is therefore missing from PATH. The installer exited with `node: command not found`.
+
+**Fix:** `install.sh` now explicitly sources all three version managers at startup before any Node.js check:
+```bash
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
+[ -s "$HOME/.nvm/nvm.sh" ] && . "$HOME/.nvm/nvm.sh"
+[ -s "$HOME/.asdf/asdf.sh" ] && . "$HOME/.asdf/asdf.sh"
+```
+This is the same pattern used by Homebrew, Rustup, and the nvm installer itself.
+
+**Also added:** When Node.js is not found, the error message now shows platform-specific install instructions (`brew install node`, nvm one-liner, nodejs.org link) instead of a bare error.
+
+#### Bug 2 — Windows login "unexpected syntax" error
+
+**Root cause:** `AUTH_SECRET` was generated with `randomBytes(32).toString('base64')`, which produces characters `+`, `/`, and `=`. When dotenv parses an unquoted value containing these characters on Windows (e.g., `AUTH_SECRET=NB0vbs97v9M+ODL2=`), the `+` is treated as a space and `=` terminates the value. The JWT signing key is silently corrupted. NextAuth then fails to verify any session token and returns an opaque "unexpected syntax" error on the login page.
+
+**Fix:** Switched to `base64url` encoding (RFC 4648 §5) in both `gigabot init` (`.env` seed) and `gigabot reset-auth`. `base64url` uses only `A-Z`, `a-z`, `0-9`, `-`, and `_` — no characters that require quoting in dotenv.
+
+**Affected users:** Anyone who ran `gigabot init` on Windows before v1.2.4 has a corrupted `AUTH_SECRET`. Run `npm run reset-auth` to regenerate it, then restart the server.
+
+#### Bug 3 — Windows `npm install` / `npm run build` / `git` command failures
+
+**Root cause:** All `execSync` calls in `bin/cli.js` that invoke `npm`, `npx`, `git`, and `docker` were missing `shell: true`. On Windows, these commands are `.cmd` shims that only resolve when the shell is involved. Without `shell: true`, Node.js tries to execute `npm` as a binary directly, which fails with `ENOENT`.
+
+**Fix:** Added `shell: true` to all 13 `execSync` calls in `bin/cli.js` that invoke external commands.
+
+### Regression tests
+
+12/12 tests pass. Test suite covers: syntax validation, `base64url` encoding (no `+/=` chars), Homebrew/nvm/asdf PATH block presence, `shell: true` coverage, and all setup file syntax checks.
+
+---
+
 ## 1.2.3 — 2026-03-05
 
 ### Critical Fix: curl|bash setup wizard exits immediately (TTY re-attachment)

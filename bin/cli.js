@@ -304,7 +304,8 @@ async function init() {
 
   // Run npm install
   console.log('\nInstalling dependencies...\n');
-  execSync('npm install', { stdio: 'inherit', cwd });
+  // shell:true is required on Windows so npm resolves via PATH (npm.cmd)
+  execSync('npm install', { stdio: 'inherit', cwd, shell: true });
 
   // Create or update .env with auto-generated infrastructure values
   const envPath = path.join(cwd, '.env');
@@ -314,7 +315,8 @@ async function init() {
 
   if (!fs.existsSync(envPath)) {
     // Seed .env for new projects
-    const authSecret = randomBytes(32).toString('base64');
+    // base64url avoids +, /, and = chars that break dotenv parsing on Windows
+    const authSecret = randomBytes(32).toString('base64url');
     const seedEnv = `# gigabot Configuration
 # Run "npm run setup" to complete configuration
 
@@ -490,7 +492,8 @@ async function resetAuth() {
     process.exit(1);
   }
 
-  const newSecret = randomBytes(32).toString('base64');
+  // base64url avoids +, /, and = chars that break dotenv parsing on Windows
+  const newSecret = randomBytes(32).toString('base64url');
   updateEnvVariable('AUTH_SECRET', newSecret);
   console.log('\n  AUTH_SECRET regenerated.');
   console.log('  All existing sessions have been invalidated.');
@@ -527,7 +530,7 @@ async function upgrade() {
   // Resolve target version
   let targetVersion;
   try {
-    targetVersion = execSync(`npm view gigabot@${tag} version`, { encoding: 'utf8' }).trim();
+    targetVersion = execSync(`npm view gigabot@${tag} version`, { encoding: 'utf8', shell: true }).trim();
   } catch {
     console.error(`\n  Could not resolve gigabot@${tag}. Check the version/tag and try again.\n`);
     process.exit(1);
@@ -541,11 +544,11 @@ async function upgrade() {
   }
 
   // --- Save any local changes ---
-  const status = execSync('git status --porcelain', { encoding: 'utf8', cwd }).trim();
+  const status = execSync('git status --porcelain', { encoding: 'utf8', cwd, shell: true }).trim();
   if (status) {
     console.log('\n  You have local changes. Saving them before upgrading...\n');
     try {
-      execSync('git add -A && git commit -m "save local changes before gigabot upgrade"', { stdio: 'inherit', cwd });
+      execSync('git add -A && git commit -m "save local changes before gigabot upgrade"', { stdio: 'inherit', cwd, shell: true });
     } catch {
       console.error('\n  Could not save your local changes. Please try again.\n');
       return;
@@ -555,7 +558,7 @@ async function upgrade() {
   // --- Pull remote changes ---
   console.log('\n  Syncing with remote...\n');
   try {
-    execSync('git pull --rebase', { stdio: 'inherit', cwd });
+    execSync('git pull --rebase', { stdio: 'inherit', cwd, shell: true });
   } catch {
     console.error('\n  Your local changes conflict with changes on GitHub.');
     console.error('  This means someone (or your bot) changed the same files you did.\n');
@@ -570,7 +573,7 @@ async function upgrade() {
   // --- Install ---
   console.log(`\n  Installing gigabot@${targetVersion}...\n`);
   try {
-    execSync(`npm install gigabot@${targetVersion}`, { stdio: 'inherit', cwd });
+    execSync(`npm install gigabot@${targetVersion}`, { stdio: 'inherit', cwd, shell: true });
   } catch {
     console.error('\n  Install failed. Check your internet connection and try again.\n');
     process.exit(1);
@@ -579,7 +582,7 @@ async function upgrade() {
   // --- Init (spawn new process to use the NEW version's templates) ---
   console.log('\n  Updating project files...\n');
   try {
-    execSync('npx gigabot init', { stdio: 'inherit', cwd });
+    execSync('npx gigabot init', { stdio: 'inherit', cwd, shell: true });
   } catch {
     console.error('\n  Failed to update project files. Try running "npx gigabot init" manually.\n');
     process.exit(1);
@@ -593,7 +596,7 @@ async function upgrade() {
   // --- Build ---
   console.log('\n  Building...\n');
   try {
-    execSync('npm run build', { stdio: 'inherit', cwd });
+    execSync('npm run build', { stdio: 'inherit', cwd, shell: true });
   } catch {
     console.error('\n  Build failed. The upgrade has been applied but the project does not build.');
     console.error('  Fix the build errors, then run:\n');
@@ -604,11 +607,11 @@ async function upgrade() {
   }
 
   // --- Commit upgrade ---
-  const changes = execSync('git status --porcelain', { encoding: 'utf8', cwd }).trim();
+  const changes = execSync('git status --porcelain', { encoding: 'utf8', cwd, shell: true }).trim();
   if (changes) {
     try {
-      execSync('git add -A', { cwd });
-      execSync(`git commit -m "upgrade gigabot to ${targetVersion}"`, { stdio: 'inherit', cwd });
+      execSync('git add -A', { cwd, shell: true });
+      execSync(`git commit -m "upgrade gigabot to ${targetVersion}"`, { stdio: 'inherit', cwd, shell: true });
     } catch {
       console.error('\n  Failed to commit upgrade. Try running manually:');
       console.error(`    git add -A && git commit -m "upgrade gigabot to ${targetVersion}"\n`);
@@ -619,7 +622,7 @@ async function upgrade() {
   // --- Push ---
   console.log('\n  Pushing to GitHub...\n');
   try {
-    execSync('git push', { stdio: 'inherit', cwd });
+    execSync('git push', { stdio: 'inherit', cwd, shell: true });
   } catch {
     console.error('\n  Could not push to GitHub. Try running "git push" manually.\n');
     process.exit(1);
@@ -629,10 +632,10 @@ async function upgrade() {
   const composeFile = path.join(cwd, 'docker-compose.yml');
   if (fs.existsSync(composeFile)) {
     try {
-      const running = execSync('docker compose ps --status running -q', { encoding: 'utf8', cwd }).trim();
+      const running = execSync('docker compose ps --status running -q', { encoding: 'utf8', cwd, shell: true }).trim();
       if (running) {
         console.log('  Restarting Docker containers...\n');
-        execSync('docker compose down && docker compose up -d', { stdio: 'inherit', cwd });
+        execSync('docker compose down && docker compose up -d', { stdio: 'inherit', cwd, shell: true });
       }
     } catch {
       // Docker not available or not running — skip
