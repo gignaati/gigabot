@@ -1,5 +1,46 @@
 # Changelog
 
+## 1.2.3 — 2026-03-05
+
+### Critical Fix: curl|bash setup wizard exits immediately (TTY re-attachment)
+
+#### Root cause
+
+When GigaBot is installed via `curl -fsSL .../install.sh | bash`, bash's stdin
+is the curl pipe. Every child process spawned by that bash script — including
+`npm run setup` → `node setup/setup.mjs` — inherits that pipe as stdin.
+`@clack/prompts` calls `setRawMode(stdin, true)` but since `stdin.isTTY` is
+`undefined` (not a terminal), raw mode is skipped. The keypress listener fires
+immediately with an EOF event, which `@clack/core` interprets as the cancel
+action (`process.exit(0)`). The wizard exits before the user can select a mode.
+
+#### Two-layer fix (defence in depth)
+
+**Layer 1 — install.sh (shell level):**
+Added `exec < /dev/tty` guard at the top of the script (same pattern used by
+Homebrew, Rustup, and nvm). This redirects bash stdin from the curl pipe to the
+controlling terminal before any child processes are spawned.
+
+```bash
+if [ ! -t 0 ] && [ -e /dev/tty ]; then
+  exec < /dev/tty
+fi
+```
+
+**Layer 2 — setup.mjs (Node.js level):**
+Added a TTY guard that detects `process.stdin.isTTY === undefined` and
+re-opens `/dev/tty` as a Node.js ReadStream, reassigning `process.stdin` so
+that `@clack/prompts` receives a real terminal. Covers cases where
+`setup.mjs` is called directly without going through `install.sh`.
+
+#### Regression test
+
+New script `scripts/test-tty-regression.mjs` (10 tests) validates both layers
+and can be run with `npm run test:tty`. Added `test:tty` to `package.json`
+scripts.
+
+---
+
 ## 1.2.2 — 2026-03-04
 
 ### Branding: Remove all ThePopeBot / @stephengpope references

@@ -5,6 +5,18 @@
 # =============================================================================
 set -e
 
+# ─── TTY Re-attachment ────────────────────────────────────────────────────────
+# When this script is piped via `curl | bash`, bash's stdin is the pipe (not
+# the terminal). Any interactive child process (npm run setup → @clack/prompts)
+# inherits that pipe as stdin, gets EOF immediately, and exits silently.
+#
+# Fix: if stdin is NOT a TTY but /dev/tty is available, redirect stdin from
+# /dev/tty so all interactive prompts work correctly.
+# This is the same pattern used by Homebrew, Rustup, and nvm installers.
+if [ ! -t 0 ] && [ -e /dev/tty ]; then
+  exec < /dev/tty
+fi
+
 BOLD="\033[1m"
 GREEN="\033[0;32m"
 CYAN="\033[0;36m"
@@ -87,5 +99,5 @@ echo -e "  ${CYAN}docker compose -f docker-compose.local.yml up -d${RESET}   —
 echo ""
 echo -e "${BOLD}Docs:${RESET}    https://github.com/gignaati/gigabot"
 echo -e "${BOLD}Support:${RESET} support@gignaati.com"
-echo -e "${BOLD}Website:${RESET} https://www.gignaati.com"
+echo -e "${BOLD}Website:${RESET} https://gigabot.gignaati.com"
 echo ""
