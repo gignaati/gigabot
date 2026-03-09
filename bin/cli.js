@@ -215,7 +215,9 @@ async function init() {
   if (!fs.existsSync(pkgPath)) {
     const dirName = path.basename(cwd);
     const { version } = JSON.parse(fs.readFileSync(path.join(packageDir, 'package.json'), 'utf8'));
-    const gigabotDep = version.includes('-') ? version : '^1.0.0';
+    // Use the exact current version as the minimum — not ^1.0.0 which would
+    // resolve to the oldest published version and miss all recent bug fixes.
+    const gigabotDep = version.includes('-') ? version : `^${version}`;
     const pkg = {
       name: dirName,
       private: true,

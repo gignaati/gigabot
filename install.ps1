@@ -172,7 +172,9 @@ Write-Host ""
 
 Push-Location $AbsProjectDir
 try {
-    & npx gigabot@latest init
+    # --% passes --yes literally to npx, suppressing the "Ok to proceed? (y)" prompt
+    # that would hang non-interactive / piped invocations.
+    & npx --yes gigabot@latest init
     if ($LASTEXITCODE -ne 0) {
         Write-Fail "npx gigabot@latest init failed (exit code $LASTEXITCODE)."
         Pop-Location
@@ -186,6 +188,19 @@ try {
 
 Write-Host ""
 Write-Ok "Giga Bot scaffolded successfully!"
+Write-Host ""
+
+# ─── Install npm dependencies ────────────────────────────────────────────────
+# The scaffolded project needs its deps installed before npm run setup can run.
+Write-Step "Installing dependencies..."
+try {
+    & npm install
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warn "npm install exited with code $LASTEXITCODE. Setup may fail."
+    }
+} catch {
+    Write-Warn "npm install encountered an error: $_"
+}
 Write-Host ""
 
 # ─── Auto-launch setup wizard ────────────────────────────────────────────────

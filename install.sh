@@ -2,12 +2,13 @@
 # =============================================================================
 #  Giga Bot — One-Command Installer for Linux / macOS
 #  Powered by Gignaati — https://www.gignaati.com
+#  Usage: curl -fsSL https://raw.githubusercontent.com/gignaati/gigabot/main/install.sh | bash
 # =============================================================================
 set -e
 
 # ─── TTY Re-attachment ────────────────────────────────────────────────────────
 # When this script is piped via `curl | bash`, bash's stdin is the pipe (not
-# the terminal). Any interactive child process (npm run setup → @clack/prompts)
+# the terminal). Any interactive child process (the setup wizard → @clack/prompts)
 # inherits that pipe as stdin, gets EOF immediately, and exits silently.
 #
 # Fix: if stdin is NOT a TTY but /dev/tty is available, redirect stdin from
@@ -48,7 +49,7 @@ echo -e "${BOLD}${CYAN}║         https://www.gignaati.com                     
 echo -e "${BOLD}${CYAN}╚══════════════════════════════════════════════════════════╝${RESET}"
 echo ""
 
-# Check Node.js
+# ─── Node.js check ───────────────────────────────────────────────────────────
 if ! command -v node &>/dev/null; then
   echo -e "${RED}✗ Node.js is not installed.${RESET}"
   echo ""
@@ -69,7 +70,7 @@ if [ "$NODE_VERSION" -lt 18 ]; then
 fi
 echo -e "${GREEN}✓ Node.js $(node --version)${RESET}"
 
-# Check npm
+# ─── npm check ───────────────────────────────────────────────────────────────
 if ! command -v npm &>/dev/null; then
   echo -e "${RED}✗ npm is not installed.${RESET}"
   echo "  npm comes bundled with Node.js. Please reinstall from https://nodejs.org"
@@ -77,19 +78,20 @@ if ! command -v npm &>/dev/null; then
 fi
 echo -e "${GREEN}✓ npm $(npm --version)${RESET}"
 
-# Check Git (optional — only needed for Cloud Mode)
+# ─── Git check (optional — only needed for Cloud Mode) ───────────────────────
 if ! command -v git &>/dev/null; then
   echo -e "${YELLOW}⚠ Git is not installed (optional — only needed for Cloud Mode).${RESET}"
 fi
 
-# Check Docker (optional — only needed for running via docker-compose)
+# ─── Docker check (optional — only needed for running via docker-compose) ────
 if ! command -v docker &>/dev/null; then
   echo -e "${YELLOW}⚠ Docker is not installed (optional — needed to run via docker-compose).${RESET}"
   echo -e "  Install from https://docs.docker.com/get-docker/"
 fi
 
-# Determine project directory
-PROJECT_DIR="${1:-my-gigabot}"
+# ─── Project directory ───────────────────────────────────────────────────────
+# Supports GIGABOT_DIR env var for non-interactive / CI usage
+PROJECT_DIR="${GIGABOT_DIR:-${1:-my-gigabot}}"
 
 # Resolve the absolute path so we can cd back to it after subshells
 ABS_PROJECT_DIR="$(pwd)/${PROJECT_DIR}"
@@ -98,16 +100,23 @@ echo ""
 echo -e "${BOLD}Creating project in: ${PROJECT_DIR}/${RESET}"
 mkdir -p "$PROJECT_DIR"
 
-# Scaffold the project inside the directory
+# ─── Scaffold the project ────────────────────────────────────────────────────
+# --yes suppresses the "Ok to proceed? (y)" npm prompt that hangs curl|bash.
 echo ""
 echo -e "${BOLD}Scaffolding Giga Bot project...${RESET}"
-(cd "$PROJECT_DIR" && npx gigabot@latest init)
+(cd "$PROJECT_DIR" && npx --yes gigabot@latest init)
 
 echo ""
 echo -e "${GREEN}${BOLD}✅ Giga Bot scaffolded successfully!${RESET}"
 echo ""
 
-# ─── Auto-launch setup wizard ─────────────────────────────────────────────────
+# ─── Install npm dependencies ────────────────────────────────────────────────
+# The scaffolded project needs its deps installed before npm run setup can run.
+echo -e "${BOLD}Installing dependencies...${RESET}"
+(cd "$ABS_PROJECT_DIR" && npm install)
+echo ""
+
+# ─── Auto-launch setup wizard ────────────────────────────────────────────────
 # Change into the project directory and run setup immediately so the user
 # does not have to manually cd and run a second command.
 echo -e "${BOLD}Launching setup wizard...${RESET}"
@@ -115,12 +124,12 @@ echo ""
 cd "$ABS_PROJECT_DIR"
 npm run setup
 
-# ─── Post-setup instructions ──────────────────────────────────────────────────
+# ─── Post-setup instructions ─────────────────────────────────────────────────
 echo ""
 echo -e "${BOLD}${GREEN}✅ Setup complete!${RESET}"
 echo ""
 echo -e "${BOLD}To start GigaBot:${RESET}"
-echo -e "  ${CYAN}npm run dev${RESET}   — Next.js dev server (recommended for development)"
+echo -e "  ${CYAN}cd ${PROJECT_DIR} && npm run dev${RESET}   — Next.js dev server"
 echo -e "  ${CYAN}docker compose -f docker-compose.local.yml up -d${RESET}   — Docker (Local Mode)"
 echo ""
 echo -e "${BOLD}Docs:${RESET}    https://github.com/gignaati/gigabot"

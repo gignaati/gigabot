@@ -3,9 +3,15 @@
  * GigaBot Regression Test Suite
  *
  * Validates cross-platform install correctness:
- *   Tests  1-10  — TTY re-attachment (curl|bash), setup file syntax, /dev/tty
+ *   Tests  1-10  — TTY re-attachment (curl|bash), setup file syntax
  *   Tests 11-13  — Windows-safe AUTH_SECRET, shell:true, macOS PATH sourcing
  *   Tests 14-17  — install.ps1 PowerShell Windows installer
+ *   Tests 18-20  — install.sh critical flow: npx --yes, npm install, GIGABOT_DIR
+ *
+ * NOTE: Tests 7 and 9 (physical /dev/tty access) are skipped on headless CI
+ * runners (GitHub Actions, Docker without TTY) where /dev/tty is not attached
+ * to a controlling terminal. The TTY guard *logic* is validated by Test 3
+ * (source-level check) and Test 9 (conditional skip on CI).
  *
  * Run:  node scripts/test-tty-regression.mjs
  * CI:   npm run test:tty
@@ -19,10 +25,25 @@ import { execSync } from 'child_process';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 
+// Detect headless CI environment (GitHub Actions, Docker, etc.)
+const IS_CI = !!(
+  process.env.CI ||
+  process.env.GITHUB_ACTIONS ||
+  process.env.JENKINS_URL ||
+  process.env.TRAVIS ||
+  process.env.CIRCLECI
+);
+
 let passed = 0;
 let failed = 0;
+let skipped = 0;
 
-function test(name, fn) {
+function test(name, fn, { skipOnCI = false } = {}) {
+  if (skipOnCI && IS_CI) {
+    console.log(`  ⏭️  ${name} (skipped — headless CI)`);
+    skipped++;
+    return;
+  }
   try {
     fn();
     console.log(`  ✅  ${name}`);
@@ -38,7 +59,8 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-console.log('\n🔍  GigaBot TTY Regression Tests\n');
+console.log('\n🔍  GigaBot Regression Tests\n');
+if (IS_CI) console.log('  ℹ️  Headless CI detected — /dev/tty physical-access tests will be skipped\n');
 
 // ─── Test 1: install.sh has exec < /dev/tty guard ────────────────────────────
 test('install.sh contains exec < /dev/tty guard', () => {
@@ -91,7 +113,9 @@ test('setup-local.mjs passes Node.js syntax check', () => {
   });
 });
 
-// ─── Test 7: /dev/tty is accessible ──────────────────────────────────────────
+// ─── Test 7: /dev/tty is accessible (skipped on headless CI) ─────────────────
+// GitHub Actions runners have /dev/tty but it returns ENXIO because there is
+// no controlling terminal. This test is valid only on real interactive machines.
 test('/dev/tty exists and is accessible', () => {
   assert(fs.existsSync('/dev/tty'), '/dev/tty does not exist on this system');
   let fd;
@@ -102,7 +126,7 @@ test('/dev/tty exists and is accessible', () => {
   } finally {
     if (fd !== undefined) fs.closeSync(fd);
   }
-});
+}, { skipOnCI: true });
 
 // ─── Test 8: @clack/prompts can be imported ───────────────────────────────────
 test('@clack/prompts can be imported', async () => {
@@ -111,7 +135,9 @@ test('@clack/prompts can be imported', async () => {
   assert(typeof isCancel === 'function', 'isCancel is not a function');
 });
 
-// ─── Test 9: Simulate curl|bash — stdin is non-TTY ───────────────────────────
+// ─── Test 9: Simulate curl|bash — stdin is non-TTY (skipped on headless CI) ──
+// On headless CI /dev/tty itself is not accessible, so this test would always
+// fail for the wrong reason. The TTY guard logic is validated by Test 3.
 test('Simulated non-TTY stdin: TTY guard opens /dev/tty successfully', () => {
   const originalIsTTY = process.stdin.isTTY;
   try {
@@ -138,7 +164,7 @@ test('Simulated non-TTY stdin: TTY guard opens /dev/tty successfully', () => {
       configurable: true,
     });
   }
-});
+}, { skipOnCI: true });
 
 // ─── Test 10: install.sh is executable ───────────────────────────────────────
 test('install.sh is executable', () => {
@@ -149,7 +175,7 @@ test('install.sh is executable', () => {
 
 // ─── Summary (Tests 1-10) ─────────────────────────────────────────────────────
 console.log(`\n${'─'.repeat(50)}`);
-console.log(`  Results: ${passed} passed, ${failed} failed`);
+console.log(`  Results: ${passed} passed, ${failed} failed, ${skipped} skipped`);
 console.log(`${'─'.repeat(50)}\n`);
 
 // ─── Test 11: AUTH_SECRET uses base64url (no +/= chars) ──────────────────────
@@ -237,10 +263,49 @@ test('install.ps1 auto-launches npm run setup after scaffolding', () => {
   );
 });
 
+// ─── Test 18: install.sh uses npx --yes to suppress interactive prompt ────────
+test('install.sh uses npx --yes to suppress "Ok to proceed?" prompt', () => {
+  const installSh = fs.readFileSync(path.join(ROOT, 'install.sh'), 'utf8');
+  assert(
+    installSh.includes('npx --yes gigabot@latest') || installSh.includes('npx -y gigabot@latest'),
+    'install.sh is missing --yes on npx call — the "Ok to proceed? (y)" prompt will hang curl|bash installs'
+  );
+});
+
+// ─── Test 19: install.sh runs npm install before npm run setup ───────────────
+test('install.sh runs npm install before npm run setup', () => {
+  const installSh = fs.readFileSync(path.join(ROOT, 'install.sh'), 'utf8');
+  // Only match actual command lines, not comments (lines starting with #)
+  const lines = installSh.split('\n');
+  const installLine = lines.findIndex(l => !l.trimStart().startsWith('#') && /\bnpm install\b/.test(l));
+  const setupLine   = lines.findIndex(l => !l.trimStart().startsWith('#') && /\bnpm run setup\b/.test(l));
+  assert(
+    installLine !== -1,
+    'install.sh is missing npm install — setup wizard will fail with "Cannot find module" errors'
+  );
+  assert(
+    setupLine !== -1,
+    'install.sh is missing npm run setup'
+  );
+  assert(
+    installLine < setupLine,
+    `install.sh runs npm run setup (line ${setupLine + 1}) before npm install (line ${installLine + 1}) — dependencies will not be available`
+  );
+});
+
+// ─── Test 20: bin/cli.js uses current version for gigabotDep (not ^1.0.0) ────
+test('bin/cli.js scaffolds package.json with current version, not hardcoded ^1.0.0', () => {
+  const cliJs = fs.readFileSync(path.join(ROOT, 'bin', 'cli.js'), 'utf8');
+  assert(
+    !cliJs.includes("'^1.0.0'") && !cliJs.includes('"^1.0.0"'),
+    'bin/cli.js still hardcodes ^1.0.0 for gigabotDep — scaffolded projects will install the oldest version'
+  );
+});
+
 // ─── Final Summary ────────────────────────────────────────────────────────────
-const total = passed + failed;
+const total = passed + failed + skipped;
 console.log(`\n${'─'.repeat(50)}`);
-console.log(`  Final: ${passed}/${total} passed, ${failed} failed`);
+console.log(`  Final: ${passed}/${total} passed, ${failed} failed, ${skipped} skipped`);
 console.log(`${'─'.repeat(50)}\n`);
 
 if (failed > 0) {
