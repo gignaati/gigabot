@@ -1,17 +1,14 @@
 #!/usr/bin/env node
 /**
- * Regression test: TTY re-attachment for curl|bash installs
+ * GigaBot Regression Test Suite
  *
- * Validates that:
- *   1. install.sh contains the `exec < /dev/tty` guard
- *   2. setup.mjs contains the Node.js-level TTY guard
- *   3. /dev/tty is accessible on this machine
- *   4. @clack/prompts can be imported without error
- *   5. The TTY guard in setup.mjs correctly re-assigns process.stdin
- *      when stdin is not a TTY (simulates curl|bash pipe condition)
+ * Validates cross-platform install correctness:
+ *   Tests  1-10  — TTY re-attachment (curl|bash), setup file syntax, /dev/tty
+ *   Tests 11-13  — Windows-safe AUTH_SECRET, shell:true, macOS PATH sourcing
+ *   Tests 14-17  — install.ps1 PowerShell Windows installer
  *
  * Run:  node scripts/test-tty-regression.mjs
- * CI:   add to package.json scripts as "test:tty"
+ * CI:   npm run test:tty
  */
 
 import fs from 'fs';
@@ -74,6 +71,7 @@ test('setup.mjs contains Node.js-level TTY guard', () => {
 test('setup.mjs passes Node.js syntax check', () => {
   execSync(`node --check ${path.join(ROOT, 'setup', 'setup.mjs')}`, {
     stdio: 'pipe',
+    shell: true,
   });
 });
 
@@ -81,6 +79,7 @@ test('setup.mjs passes Node.js syntax check', () => {
 test('setup-cloud.mjs passes Node.js syntax check', () => {
   execSync(`node --check ${path.join(ROOT, 'setup', 'setup-cloud.mjs')}`, {
     stdio: 'pipe',
+    shell: true,
   });
 });
 
@@ -88,6 +87,7 @@ test('setup-cloud.mjs passes Node.js syntax check', () => {
 test('setup-local.mjs passes Node.js syntax check', () => {
   execSync(`node --check ${path.join(ROOT, 'setup', 'setup-local.mjs')}`, {
     stdio: 'pipe',
+    shell: true,
   });
 });
 
@@ -113,19 +113,13 @@ test('@clack/prompts can be imported', async () => {
 
 // ─── Test 9: Simulate curl|bash — stdin is non-TTY ───────────────────────────
 test('Simulated non-TTY stdin: TTY guard opens /dev/tty successfully', () => {
-  // Temporarily mark stdin as non-TTY (as it would be in curl|bash)
-  const originalStdin = process.stdin;
   const originalIsTTY = process.stdin.isTTY;
-
   try {
-    // Simulate the non-TTY condition
     Object.defineProperty(process.stdin, 'isTTY', {
       value: undefined,
       writable: true,
       configurable: true,
     });
-
-    // Run the same guard logic as setup.mjs
     let ttyOpened = false;
     if (!process.stdin.isTTY) {
       try {
@@ -136,10 +130,8 @@ test('Simulated non-TTY stdin: TTY guard opens /dev/tty successfully', () => {
         // /dev/tty not available
       }
     }
-
     assert(ttyOpened, '/dev/tty could not be opened under simulated non-TTY conditions');
   } finally {
-    // Restore
     Object.defineProperty(process.stdin, 'isTTY', {
       value: originalIsTTY,
       writable: true,
@@ -155,24 +147,18 @@ test('install.sh is executable', () => {
   assert(isExecutable, 'install.sh does not have executable permissions');
 });
 
-// ─── Summary ─────────────────────────────────────────────────────────────────
+// ─── Summary (Tests 1-10) ─────────────────────────────────────────────────────
 console.log(`\n${'─'.repeat(50)}`);
 console.log(`  Results: ${passed} passed, ${failed} failed`);
 console.log(`${'─'.repeat(50)}\n`);
 
-if (failed > 0) {
-  process.exit(1);
-}
-
 // ─── Test 11: AUTH_SECRET uses base64url (no +/= chars) ──────────────────────
 test('bin/cli.js generates AUTH_SECRET with base64url (no +/= chars)', () => {
   const cliJs = fs.readFileSync(path.join(ROOT, 'bin', 'cli.js'), 'utf8');
-  // Must use base64url, not plain base64
   assert(
-    cliJs.includes("base64url"),
+    cliJs.includes('base64url'),
     'bin/cli.js is still using base64 for AUTH_SECRET — must use base64url to prevent Windows dotenv parsing failures'
   );
-  // Must NOT have any plain .toString('base64') calls for AUTH_SECRET generation
   const base64Matches = [...cliJs.matchAll(/randomBytes\([^)]+\)\.toString\(['"]base64['"]\)/g)];
   assert(
     base64Matches.length === 0,
@@ -183,7 +169,6 @@ test('bin/cli.js generates AUTH_SECRET with base64url (no +/= chars)', () => {
 // ─── Test 12: All execSync calls use shell:true ───────────────────────────────
 test('bin/cli.js execSync calls for npm/git/docker use shell:true', () => {
   const cliJs = fs.readFileSync(path.join(ROOT, 'bin', 'cli.js'), 'utf8');
-  // Find all execSync calls that run external commands (npm, npx, git, docker)
   const execSyncCalls = [...cliJs.matchAll(/execSync\(['"`](?:npm|npx|git|docker)[^)]+\)/g)];
   const missingShell = execSyncCalls.filter(m => !m[0].includes('shell'));
   assert(
@@ -210,6 +195,54 @@ test('install.sh sources Homebrew, nvm, and asdf for macOS/Linux PATH', () => {
   );
 });
 
-// ─── Updated Summary ──────────────────────────────────────────────────────────
-// Note: The summary block at the end of the original script already handles exit codes.
-// These tests are appended and will be included in the final count automatically.
+// ─── Test 14: install.ps1 exists ─────────────────────────────────────────────
+test('install.ps1 exists in repo root', () => {
+  const ps1Path = path.join(ROOT, 'install.ps1');
+  assert(fs.existsSync(ps1Path), 'install.ps1 is missing from the repo root');
+});
+
+// ─── Test 15: install.ps1 has execution-policy self-bypass ───────────────────
+test('install.ps1 contains execution policy self-bypass for irm|iex users', () => {
+  const ps1 = fs.readFileSync(path.join(ROOT, 'install.ps1'), 'utf8');
+  assert(
+    ps1.includes('Set-ExecutionPolicy') && ps1.includes('Bypass') && ps1.includes('Process'),
+    'install.ps1 is missing Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass — ' +
+    'required so irm|iex works on machines with Restricted or AllSigned policy'
+  );
+});
+
+// ─── Test 16: install.ps1 augments PATH for Windows Node.js managers ─────────
+test('install.ps1 augments PATH for nvm-windows, fnm, Scoop, Chocolatey, Volta', () => {
+  const ps1 = fs.readFileSync(path.join(ROOT, 'install.ps1'), 'utf8');
+  const required = [
+    { token: 'nvm',         label: 'nvm-windows (%APPDATA%\\nvm)' },
+    { token: 'fnm',         label: 'fnm (%LOCALAPPDATA%\\fnm)' },
+    { token: 'chocolatey',  label: 'Chocolatey (C:\\ProgramData\\chocolatey\\bin)' },
+    { token: 'scoop',       label: 'Scoop (%USERPROFILE%\\scoop\\shims)' },
+    { token: 'Volta',       label: 'Volta (%LOCALAPPDATA%\\Volta\\bin)' },
+  ];
+  const missing = required.filter(r => !ps1.toLowerCase().includes(r.token.toLowerCase()));
+  assert(
+    missing.length === 0,
+    'install.ps1 is missing PATH augmentation for: ' + missing.map(r => r.label).join(', ')
+  );
+});
+
+// ─── Test 17: install.ps1 auto-launches setup wizard ─────────────────────────
+test('install.ps1 auto-launches npm run setup after scaffolding', () => {
+  const ps1 = fs.readFileSync(path.join(ROOT, 'install.ps1'), 'utf8');
+  assert(
+    ps1.includes('npm run setup'),
+    'install.ps1 does not call npm run setup — users would have to run a second command manually'
+  );
+});
+
+// ─── Final Summary ────────────────────────────────────────────────────────────
+const total = passed + failed;
+console.log(`\n${'─'.repeat(50)}`);
+console.log(`  Final: ${passed}/${total} passed, ${failed} failed`);
+console.log(`${'─'.repeat(50)}\n`);
+
+if (failed > 0) {
+  process.exit(1);
+}
