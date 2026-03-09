@@ -163,3 +163,53 @@ console.log(`${'─'.repeat(50)}\n`);
 if (failed > 0) {
   process.exit(1);
 }
+
+// ─── Test 11: AUTH_SECRET uses base64url (no +/= chars) ──────────────────────
+test('bin/cli.js generates AUTH_SECRET with base64url (no +/= chars)', () => {
+  const cliJs = fs.readFileSync(path.join(ROOT, 'bin', 'cli.js'), 'utf8');
+  // Must use base64url, not plain base64
+  assert(
+    cliJs.includes("base64url"),
+    'bin/cli.js is still using base64 for AUTH_SECRET — must use base64url to prevent Windows dotenv parsing failures'
+  );
+  // Must NOT have any plain .toString('base64') calls for AUTH_SECRET generation
+  const base64Matches = [...cliJs.matchAll(/randomBytes\([^)]+\)\.toString\(['"]base64['"]\)/g)];
+  assert(
+    base64Matches.length === 0,
+    `Found ${base64Matches.length} plain base64 randomBytes call(s) — all must use base64url`
+  );
+});
+
+// ─── Test 12: All execSync calls use shell:true ───────────────────────────────
+test('bin/cli.js execSync calls for npm/git/docker use shell:true', () => {
+  const cliJs = fs.readFileSync(path.join(ROOT, 'bin', 'cli.js'), 'utf8');
+  // Find all execSync calls that run external commands (npm, npx, git, docker)
+  const execSyncCalls = [...cliJs.matchAll(/execSync\(['"`](?:npm|npx|git|docker)[^)]+\)/g)];
+  const missingShell = execSyncCalls.filter(m => !m[0].includes('shell'));
+  assert(
+    missingShell.length === 0,
+    `${missingShell.length} execSync call(s) missing shell:true — Windows cannot resolve .cmd shims without it:\n` +
+    missingShell.map(m => `  ${m[0].slice(0, 80)}...`).join('\n')
+  );
+});
+
+// ─── Test 13: install.sh sources Homebrew/nvm/asdf PATH ──────────────────────
+test('install.sh sources Homebrew, nvm, and asdf for macOS/Linux PATH', () => {
+  const installSh = fs.readFileSync(path.join(ROOT, 'install.sh'), 'utf8');
+  assert(
+    installSh.includes('/opt/homebrew/bin') || installSh.includes('homebrew'),
+    'install.sh is missing Homebrew PATH sourcing (/opt/homebrew/bin) — required for macOS Apple Silicon'
+  );
+  assert(
+    installSh.includes('.nvm/nvm.sh') || installSh.includes('NVM_DIR'),
+    'install.sh is missing nvm sourcing (~/.nvm/nvm.sh) — required for nvm-managed Node.js installs'
+  );
+  assert(
+    installSh.includes('.asdf/asdf.sh') || installSh.includes('asdf'),
+    'install.sh is missing asdf sourcing (~/.asdf/asdf.sh) — required for asdf-managed Node.js installs'
+  );
+});
+
+// ─── Updated Summary ──────────────────────────────────────────────────────────
+// Note: The summary block at the end of the original script already handles exit codes.
+// These tests are appended and will be included in the final count automatically.

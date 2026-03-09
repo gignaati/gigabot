@@ -1,9 +1,10 @@
 name: Publish to npm
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Triggered on every version tag push (e.g. v1.1.4, v1.2.0-beta.1).
+# Triggered on every version tag push (e.g. v1.2.4, v1.3.0-beta.1).
 #
 # Pipeline:
+#   0. regression-tests  — run full test suite; blocks ALL downstream jobs on failure
 #   1. publish-staging   — publish to npm under a temporary "staging" dist-tag
 #   2. build-containers  — build & push 4 Docker images in parallel
 #   3. promote           — promote staging → real channel (latest / beta / rc)
@@ -11,6 +12,15 @@ name: Publish to npm
 #   5. github-release    — create GitHub Release with the generated notes
 #   6. update-changelog  — commit updated CHANGELOG.md back to main
 #   7. cleanup-on-failure — unpublish & remove staging tag if Docker builds fail
+#
+# Dependency graph:
+#
+#   regression-tests
+#        │
+#        ▼
+#   publish-staging ──► build-containers ──► promote ──► release-notes ──► github-release ──► update-changelog
+#                              │
+#                        cleanup-on-failure (runs only if build-containers fails)
 # ─────────────────────────────────────────────────────────────────────────────
 
 on:
@@ -24,8 +34,58 @@ concurrency:
 
 jobs:
 
+  # ─── Job 0: Regression test suite (gates the entire pipeline) ────────────
+  #
+  # Runs scripts/test-tty-regression.mjs — 12 tests covering:
+  #   • install.sh TTY re-attachment guards (exec < /dev/tty + conditional)
+  #   • setup.mjs Node.js-level TTY guard
+  #   • Syntax validation for all three setup files
+  #   • /dev/tty accessibility on the runner
+  #   • @clack/prompts import
+  #   • Simulated curl|bash non-TTY stdin
+  #   • install.sh executable bit
+  #   • AUTH_SECRET uses base64url (no +/= chars)
+  #   • All execSync calls use shell:true
+  #   • Homebrew/nvm/asdf PATH sourcing block present
+  #
+  # Exit code 1 from the script causes this job to fail, which prevents
+  # publish-staging (and all downstream jobs) from running.
+  # ─────────────────────────────────────────────────────────────────────────
+  regression-tests:
+    name: Regression Tests (pre-publish gate)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run regression test suite
+        run: node scripts/test-tty-regression.mjs
+
+      - name: Upload test results on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-test-failure-${{ github.ref_name }}
+          path: |
+            scripts/test-tty-regression.mjs
+            install.sh
+            setup/setup.mjs
+            setup/setup-cloud.mjs
+            setup/setup-local.mjs
+          retention-days: 14
+
   # ─── Job 1: Publish to npm under a temporary "staging" tag ───────────────
   publish-staging:
+    name: Publish to npm (staging)
+    needs: [regression-tests]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -65,6 +125,7 @@ jobs:
 
   # ─── Job 2: Build & push Docker images (4 parallel) ──────────────────────
   build-containers:
+    name: Build Docker images
     needs: [publish-staging]
     runs-on: ubuntu-latest
     permissions:
@@ -106,6 +167,7 @@ jobs:
 
   # ─── Job 3: Promote npm staging → real channel tag ───────────────────────
   promote:
+    name: Promote npm tag
     needs: [publish-staging, build-containers]
     runs-on: ubuntu-latest
     permissions:
@@ -131,12 +193,13 @@ jobs:
   # clean and the generation logic locally testable.
   #
   # Environment variables forwarded to the script:
-  #   TO_TAG              — current version tag (e.g. v1.1.4)
+  #   TO_TAG              — current version tag (e.g. v1.2.4)
   #   OUTPUT_FILE         — path where the script writes release_notes.md
   #   ANTHROPIC_API_KEY   — optional; enables LLM narrative summary
   #   ANTHROPIC_BASE_URL  — Anthropic API base (defaults to api.anthropic.com)
   #   MODEL               — Anthropic model ID
   release-notes:
+    name: Generate release notes
     needs: [publish-staging, promote]
     runs-on: ubuntu-latest
     permissions:
@@ -168,6 +231,7 @@ jobs:
 
   # ─── Job 5: Create GitHub Release ────────────────────────────────────────
   github-release:
+    name: Create GitHub Release
     needs: [publish-staging, promote, release-notes]
     runs-on: ubuntu-latest
     permissions:
@@ -200,6 +264,7 @@ jobs:
   # Prepends the generated release notes to CHANGELOG.md.
   # Stable releases commit directly to main; pre-releases open a PR.
   update-changelog:
+    name: Update CHANGELOG.md
     needs: [publish-staging, promote, release-notes, github-release]
     runs-on: ubuntu-latest
     permissions:
@@ -268,6 +333,7 @@ jobs:
 
   # ─── Job 7: Clean up if Docker builds fail ───────────────────────────────
   cleanup-on-failure:
+    name: Cleanup on Docker failure
     needs: [publish-staging, build-containers]
     if: always() && needs.publish-staging.result == 'success' && needs.build-containers.result != 'success'
     runs-on: ubuntu-latest

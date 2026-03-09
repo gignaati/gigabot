@@ -436,7 +436,7 @@ function diff(filePath) {
 
   try {
     // Use git diff for nice colored output, fall back to plain diff
-    execSync(`git diff --no-index -- "${dest}" "${src}"`, { stdio: 'inherit' });
+    execSync(`git diff --no-index -- "${dest}" "${src}"`, { stdio: 'inherit', shell: true });
     console.log('\nFiles are identical.\n');
   } catch (e) {
     // git diff exits with 1 when files differ (output already printed)
