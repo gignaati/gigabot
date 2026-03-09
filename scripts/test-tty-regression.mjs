@@ -302,6 +302,70 @@ test('bin/cli.js scaffolds package.json with current version, not hardcoded ^1.0
   );
 });
 
+// ─── Test 21: DropdownMenuItem destructures asChild (not spread to DOM) ─────────
+test('DropdownMenuItem destructures asChild — not spread to DOM element', () => {
+  const src = fs.readFileSync(
+    path.join(ROOT, 'lib', 'chat', 'components', 'ui', 'dropdown-menu.jsx'),
+    'utf8'
+  );
+  // The function signature must explicitly list asChild as a named parameter
+  assert(
+    /DropdownMenuItem\([^)]*asChild[^)]*\)/.test(src),
+    'DropdownMenuItem does not destructure asChild from props — it will be spread onto the DOM <div> causing React warning'
+  );
+  // The ...props spread on the <div> must NOT include asChild (it was destructured out)
+  // Verify the div render path does not have asChild in the spread
+  const divBlock = src.slice(src.lastIndexOf('<div'), src.indexOf('</div>', src.lastIndexOf('<div>')));
+  assert(
+    !divBlock.includes('asChild'),
+    'asChild is still being spread onto the DOM <div> in DropdownMenuItem — React will warn'
+  );
+});
+
+// ─── Test 22: DropdownMenuItem.js (compiled) also destructures asChild ───────
+test('DropdownMenuItem compiled .js also destructures asChild', () => {
+  const compiled = fs.readFileSync(
+    path.join(ROOT, 'lib', 'chat', 'components', 'ui', 'dropdown-menu.js'),
+    'utf8'
+  );
+  assert(
+    /DropdownMenuItem\([^)]*asChild[^)]*\)/.test(compiled),
+    'Compiled dropdown-menu.js DropdownMenuItem does not destructure asChild — .js and .jsx are out of sync'
+  );
+});
+
+// ─── Test 23: templates/app/chat/[chatId]/page.js has no await params ─────────
+test('templates/app/chat/[chatId]/page.js does not use await params (Next.js 15)', () => {
+  const chatPage = fs.readFileSync(
+    path.join(ROOT, 'templates', 'app', 'chat', '[chatId]', 'page.js'),
+    'utf8'
+  );
+  assert(
+    !chatPage.includes('await params'),
+    'templates/app/chat/[chatId]/page.js still uses `await params` — Next.js 15 params are synchronous'
+  );
+  assert(
+    chatPage.includes('const { chatId } = params'),
+    'templates/app/chat/[chatId]/page.js is missing `const { chatId } = params` (synchronous destructure)'
+  );
+});
+
+// ─── Test 24: templates/app/code/[codeWorkspaceId]/page.js has no await params
+test('templates/app/code/[codeWorkspaceId]/page.js does not use await params (Next.js 15)', () => {
+  const codePage = fs.readFileSync(
+    path.join(ROOT, 'templates', 'app', 'code', '[codeWorkspaceId]', 'page.js'),
+    'utf8'
+  );
+  assert(
+    !codePage.includes('await params'),
+    'templates/app/code/[codeWorkspaceId]/page.js still uses `await params` — Next.js 15 params are synchronous'
+  );
+  assert(
+    codePage.includes('const { codeWorkspaceId } = params'),
+    'templates/app/code/[codeWorkspaceId]/page.js is missing `const { codeWorkspaceId } = params`'
+  );
+});
+
 // ─── Final Summary ────────────────────────────────────────────────────────────
 const total = passed + failed + skipped;
 console.log(`\n${'─'.repeat(50)}`);

@@ -79,8 +79,37 @@ export function DropdownMenuContent({ children, className, align = 'start', side
   );
 }
 
-export function DropdownMenuItem({ children, className, onClick, ...props }) {
+export function DropdownMenuItem({ children, className, onClick, asChild, ...props }) {
   const { onOpenChange } = useContext(DropdownContext);
+  const handleClick = (e) => {
+    onClick?.(e);
+    onOpenChange(false);
+  };
+
+  // When asChild=true, clone the single child element and merge in our
+  // click handler + className instead of wrapping in a <div>.
+  // This prevents React from seeing `asChild` as an unknown DOM attribute.
+  if (asChild && children) {
+    const child = Array.isArray(children) ? children[0] : children;
+    if (child && typeof child === 'object' && 'props' in child) {
+      return (
+        <child.type
+          {...child.props}
+          className={cn(
+            'relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-background focus:bg-background',
+            child.props.className,
+            className
+          )}
+          onClick={(e) => {
+            child.props.onClick?.(e);
+            handleClick(e);
+          }}
+          role="menuitem"
+        />
+      );
+    }
+  }
+
   return (
     <div
       role="menuitem"
@@ -88,10 +117,7 @@ export function DropdownMenuItem({ children, className, onClick, ...props }) {
         'relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-background focus:bg-background',
         className
       )}
-      onClick={(e) => {
-        onClick?.(e);
-        onOpenChange(false);
-      }}
+      onClick={handleClick}
       {...props}
     >
       {children}
