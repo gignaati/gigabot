@@ -23,17 +23,43 @@ export function DropdownMenuTrigger({ children, asChild, ...props }) {
     e.stopPropagation();
     onOpenChange(!open);
   };
-  if (asChild && children) {
+
+  // Slot pattern: when asChild=true (or when the child is already a button/a),
+  // clone the child and merge in our handler instead of wrapping in another element.
+  // This prevents <button><button> nesting which causes React hydration errors.
+  const child = Array.isArray(children) ? children[0] : children;
+  const childIsInteractive =
+    child && typeof child === 'object' && 'type' in child &&
+    (child.type === 'button' || child.type === 'a');
+
+  if ((asChild || childIsInteractive) && child && typeof child === 'object' && 'props' in child) {
     return (
-      <span onClick={handleClick} {...props}>
-        {children}
-      </span>
+      <child.type
+        {...child.props}
+        onClick={(e) => {
+          child.props.onClick?.(e);
+          handleClick(e);
+        }}
+        aria-expanded={open}
+        data-state={open ? 'open' : 'closed'}
+      />
     );
   }
+
+  // Default: render a semantically neutral <span> (not <button>) so callers
+  // that pass <button> children never produce invalid <button><button> nesting.
   return (
-    <button onClick={handleClick} {...props}>
+    <span
+      role="button"
+      tabIndex={0}
+      onClick={handleClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleClick(e); }}
+      aria-expanded={open}
+      data-state={open ? 'open' : 'closed'}
+      {...props}
+    >
       {children}
-    </button>
+    </span>
   );
 }
 

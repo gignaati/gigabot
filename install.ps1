@@ -206,18 +206,24 @@ Write-Host ""
 # ─── Auto-launch setup wizard ────────────────────────────────────────────────
 # Mirrors install.sh behaviour: cd into the project and run npm run setup
 # immediately so the user never has to type a second command.
-Write-Step "Launching setup wizard..."
-Write-Host ""
-
-try {
-    & npm run setup
-    if ($LASTEXITCODE -ne 0) {
-        Write-Warn "Setup wizard exited with code $LASTEXITCODE."
+# Set $env:GIGABOT_SKIP_SETUP = '1' to bypass the wizard (useful in CI/CD
+# pipelines or automated provisioning where interactive prompts are not desired).
+if ($env:GIGABOT_SKIP_SETUP -eq '1') {
+    Write-Host "⚡ Skipping setup wizard (GIGABOT_SKIP_SETUP=1)" -ForegroundColor Yellow
+    Write-Host "  Run 'npm run setup' manually to configure Giga Bot." -ForegroundColor DarkGray
+} else {
+    Write-Step "Launching setup wizard..."
+    Write-Host ""
+    try {
+        & npm run setup
+        if ($LASTEXITCODE -ne 0) {
+            Write-Warn "Setup wizard exited with code $LASTEXITCODE."
+            Write-Host "  You can re-run it later with: npm run setup" -ForegroundColor DarkGray
+        }
+    } catch {
+        Write-Warn "Setup wizard encountered an error: $_"
         Write-Host "  You can re-run it later with: npm run setup" -ForegroundColor DarkGray
     }
-} catch {
-    Write-Warn "Setup wizard encountered an error: $_"
-    Write-Host "  You can re-run it later with: npm run setup" -ForegroundColor DarkGray
 }
 
 Pop-Location

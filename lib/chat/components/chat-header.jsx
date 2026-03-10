@@ -133,8 +133,8 @@ export function ChatHeader({ chatId: chatIdProp, workspaceId }) {
               {title}
             </h1>
             <DropdownMenu>
-              <DropdownMenuTrigger>
-                <button className="flex items-center justify-center h-6 w-6 rounded text-muted-foreground shrink-0">
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center justify-center h-6 w-6 rounded text-muted-foreground shrink-0" aria-label="Chat options">
                   <ChevronDownIcon size={14} />
                 </button>
               </DropdownMenuTrigger>

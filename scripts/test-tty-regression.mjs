@@ -38,20 +38,30 @@ let passed = 0;
 let failed = 0;
 let skipped = 0;
 
+// Queue of { name, fn, opts } — collected synchronously, run in order via runAll()
+const testQueue = [];
+
 function test(name, fn, { skipOnCI = false } = {}) {
-  if (skipOnCI && IS_CI) {
-    console.log(`  ⏭️  ${name} (skipped — headless CI)`);
-    skipped++;
-    return;
-  }
-  try {
-    fn();
-    console.log(`  ✅  ${name}`);
-    passed++;
-  } catch (e) {
-    console.log(`  ❌  ${name}`);
-    console.log(`      ${e.message}`);
-    failed++;
+  testQueue.push({ name, fn, skipOnCI });
+}
+
+async function runAll() {
+  for (const { name, fn, skipOnCI } of testQueue) {
+    if (skipOnCI && IS_CI) {
+      console.log(`  ⏭️  ${name} (skipped — headless CI)`);
+      skipped++;
+      continue;
+    }
+    try {
+      // Support both sync and async test functions
+      await fn();
+      console.log(`  ✅  ${name}`);
+      passed++;
+    } catch (e) {
+      console.log(`  ❌  ${name}`);
+      console.log(`      ${e.message}`);
+      failed++;
+    }
   }
 }
 
@@ -366,12 +376,76 @@ test('templates/app/code/[codeWorkspaceId]/page.js does not use await params (Ne
   );
 });
 
-// ─── Final Summary ────────────────────────────────────────────────────────────
-const total = passed + failed + skipped;
-console.log(`\n${'─'.repeat(50)}`);
-console.log(`  Final: ${passed}/${total} passed, ${failed} failed, ${skipped} skipped`);
-console.log(`${'─'.repeat(50)}\n`);
+// ─── Test 25: DropdownMenuTrigger does NOT render a <button> by default ──────────────
+test('DropdownMenuTrigger renders <span role=button> not <button> by default', () => {
+  const src = fs.readFileSync(
+    path.join(ROOT, 'lib', 'chat', 'components', 'ui', 'dropdown-menu.jsx'),
+    'utf8'
+  );
+  // The default (non-asChild) branch must use span, not button, to prevent
+  // <button><button> nesting when callers pass a <button> child.
+  const triggerFn = src.slice(src.indexOf('export function DropdownMenuTrigger'));
+  const defaultBranch = triggerFn.slice(triggerFn.indexOf('role="button"'));
+  assert(
+    defaultBranch.length > 0 && defaultBranch.startsWith('role="button"'),
+    'DropdownMenuTrigger default branch must use role="button" span, not <button>'
+  );
+  assert(
+    !triggerFn.match(/<button[^>]*>(?!.*asChild)/s),
+    'DropdownMenuTrigger must not render a raw <button> in the default (non-asChild) path'
+  );
+});
 
-if (failed > 0) {
+// ─── Test 26: compiled dropdown-menu.js also has the Slot pattern fix ─────────────
+test('dropdown-menu.js compiled file uses span role=button in default trigger path', () => {
+  const compiled = fs.readFileSync(
+    path.join(ROOT, 'lib', 'chat', 'components', 'ui', 'dropdown-menu.js'),
+    'utf8'
+  );
+  assert(
+    compiled.includes('role: "button"'),
+    'dropdown-menu.js compiled file is missing role:"button" in DropdownMenuTrigger default path'
+  );
+  assert(
+    compiled.includes('childIsInteractive'),
+    'dropdown-menu.js compiled file is missing the childIsInteractive Slot pattern'
+  );
+});
+
+// ─── Test 27: install.sh has GIGABOT_SKIP_SETUP=1 bypass ─────────────────────────
+test('install.sh supports GIGABOT_SKIP_SETUP=1 bypass for CI/CD pipelines', () => {
+  const installSh = fs.readFileSync(path.join(ROOT, 'install.sh'), 'utf8');
+  assert(
+    installSh.includes('GIGABOT_SKIP_SETUP'),
+    'install.sh is missing the GIGABOT_SKIP_SETUP=1 bypass'
+  );
+  assert(
+    installSh.includes('"${GIGABOT_SKIP_SETUP:-0}" = "1"'),
+    'install.sh GIGABOT_SKIP_SETUP check must use ${GIGABOT_SKIP_SETUP:-0} with default value'
+  );
+});
+
+// ─── Test 28: install.ps1 has GIGABOT_SKIP_SETUP=1 bypass ────────────────────────
+test('install.ps1 supports GIGABOT_SKIP_SETUP=1 bypass for CI/CD pipelines', () => {
+  const installPs1 = fs.readFileSync(path.join(ROOT, 'install.ps1'), 'utf8');
+  assert(
+    installPs1.includes('GIGABOT_SKIP_SETUP'),
+    'install.ps1 is missing the GIGABOT_SKIP_SETUP bypass'
+  );
+  assert(
+    installPs1.includes("$env:GIGABOT_SKIP_SETUP -eq '1'"),
+    "install.ps1 GIGABOT_SKIP_SETUP check must use $env:GIGABOT_SKIP_SETUP -eq '1'"
+  );
+});
+
+// ─── Run all tests and print final summary ───────────────────────────────────
+runAll().then(() => {
+  const total = passed + failed + skipped;
+  console.log(`\n${'─'.repeat(50)}`);
+  console.log(`  Final: ${passed}/${total} passed, ${failed} failed, ${skipped} skipped`);
+  console.log(`${'─'.repeat(50)}\n`);
+  if (failed > 0) process.exit(1);
+}).catch((err) => {
+  console.error('\n  ❌  Test runner crashed:', err.message);
   process.exit(1);
-}
+});

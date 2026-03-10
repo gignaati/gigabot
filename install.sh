@@ -119,10 +119,17 @@ echo ""
 # ─── Auto-launch setup wizard ────────────────────────────────────────────────
 # Change into the project directory and run setup immediately so the user
 # does not have to manually cd and run a second command.
-echo -e "${BOLD}Launching setup wizard...${RESET}"
-echo ""
+# Set GIGABOT_SKIP_SETUP=1 to bypass the wizard (useful in CI/CD pipelines
+# or automated provisioning where interactive prompts are not desired).
 cd "$ABS_PROJECT_DIR"
-npm run setup
+if [ "${GIGABOT_SKIP_SETUP:-0}" = "1" ]; then
+  echo -e "${BOLD}${YELLOW}⚡ Skipping setup wizard (GIGABOT_SKIP_SETUP=1)${RESET}"
+  echo -e "   Run ${CYAN}npm run setup${RESET} manually to configure GigaBot."
+else
+  echo -e "${BOLD}Launching setup wizard...${RESET}"
+  echo ""
+  npm run setup
+fi
 
 # ─── Post-setup instructions ─────────────────────────────────────────────────
 echo ""
