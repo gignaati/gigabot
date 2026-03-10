@@ -448,6 +448,39 @@ test('install.ps1 supports GIGABOT_SKIP_SETUP=1 bypass for CI/CD pipelines', () 
   );
 });
 
+// ─── Test 29: CI workflow has explicit npm run build step before npm publish ─────────────
+test('publish-npm.yml has explicit npm run build step before npm publish', () => {
+  const workflow = fs.readFileSync(
+    path.join(ROOT, '.github', 'workflows', 'publish-npm.yml'),
+    'utf8'
+  );
+  // The build step must appear before the publish step in the publish-staging job
+  const buildIdx = workflow.indexOf('npm run build');
+  const publishIdx = workflow.indexOf('npm publish --tag staging');
+  assert(
+    buildIdx !== -1,
+    'publish-npm.yml is missing an explicit `npm run build` step in publish-staging'
+  );
+  assert(
+    buildIdx < publishIdx,
+    '`npm run build` must appear before `npm publish --tag staging` in publish-npm.yml'
+  );
+});
+
+// ─── Test 30: templates/public/favicon.ico exists for scaffolded projects ────────────
+test('templates/public/favicon.ico exists to prevent 404 on every page load', () => {
+  const faviconPath = path.join(ROOT, 'templates', 'public', 'favicon.ico');
+  assert(
+    fs.existsSync(faviconPath),
+    'templates/public/favicon.ico is missing — scaffolded projects will get a 404 on every page load'
+  );
+  const stat = fs.statSync(faviconPath);
+  assert(
+    stat.size > 50,
+    'templates/public/favicon.ico is too small to be a valid ICO file (expected > 50 bytes)'
+  );
+});
+
 // ─── Run all tests and print final summary ───────────────────────────────────
 runAll().then(() => {
   const total = passed + failed + skipped;

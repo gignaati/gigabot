@@ -103,6 +103,9 @@ jobs:
 
       - run: npm ci
 
+      - name: Build compiled assets (JSX → JS)
+        run: npm run build
+
       - name: Detect version and release channel
         id: meta
         run: |
